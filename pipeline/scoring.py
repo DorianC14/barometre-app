@@ -137,7 +137,7 @@ def compute_region(R: dict, region: str, index: pd.DatetimeIndex, sources_used: 
             "tension": r1(100 - F_ind.iloc[-1]),
             "tension_7d": r1(100 - F_ind.iloc[-8]) if len(F_ind) > 8 else None,
             "components": comp_out,
-            "sources": [cfg.SOURCE_LABELS.get(s, s) for s in srcs],
+            "sources": [cfg.SOURCE_LABELS.get(s.split(":")[0], s) for s in srcs],
         })
 
     # ---- piliers
@@ -174,7 +174,7 @@ def compute_region(R: dict, region: str, index: pd.DatetimeIndex, sources_used: 
     contributions.sort(key=lambda c: -abs(c["contribution"] or 0))
 
     return {
-        "T": T, "T_pillars": T_pillars, "eq_T": eq_T, "pca_T": pca_T, "pca_w": pca_w,
+        "R": R, "T": T, "T_pillars": T_pillars, "eq_T": eq_T, "pca_T": pca_T, "pca_w": pca_w,
         "indicators": indicators_out, "contributions": contributions,
         "composites": composites, "ind_F": ind_F, "pillar_weights_eff": wp_eff,
     }
@@ -210,7 +210,10 @@ def _series_used(ind, region):
 
 def _pca_variant(ind_F: dict):
     """Pondération statistique : poids = |chargements| de la 1re composante principale."""
-    df = pd.DataFrame(ind_F).dropna()
+    df = pd.DataFrame(ind_F)
+    df = df[df.index >= df.index.max() - pd.Timedelta(days=cfg.Z_WINDOW_DAYS)]
+    # On écarte les indicateurs trop récents (ex. sentiment des news) qui videraient l'échantillon.
+    df = df.loc[:, df.notna().mean() >= 0.8].dropna()
     df = df.loc[:, df.std() > 1e-9]
     if df.shape[0] < 250 or df.shape[1] < 3:
         return None, {}
@@ -268,7 +271,12 @@ def advice_rules(res: dict) -> list:
     elif ta is not None and ta > 0.25:
         rules.append(("Hausse de taux anticipée", f"Le marché anticipe une hausse des taux directeurs ({ta:+.2f} pt).",
                       "Obligations courtes, banques et valeurs « value » favorisées."))
-    b = last("brent")
+    # la composante « brent » est en valeur absolue : le sens se lit sur la série brute
+    raw_b = res.get("R", {}).get("brent")
+    b = None
+    if raw_b is not None and len(raw_b.dropna()) > 63:
+        rb = raw_b.dropna()
+        b = float((rb.iloc[-1] / rb.iloc[-64] - 1) * 100)
     if b is not None and b > 15:
         rules.append(("Pétrole en forte hausse", f"Le Brent a pris {b:.0f} % en 3 mois.",
                       "Énergie favorisée ; transport aérien et consommation pénalisés."))

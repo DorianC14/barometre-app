@@ -65,6 +65,8 @@ jobs:
         working-directory: pipeline
         env:
           DATA_DIR: ${{ github.workspace }}/data
+          # Clé gratuite Twelve Data (Settings → Secrets and variables → Actions)
+          TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
         run: python run.py --mode ${{ steps.mode.outputs.mode }}
 
       - name: Publier les nouvelles données

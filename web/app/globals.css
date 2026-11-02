@@ -61,3 +61,9 @@ body {
 input[type="range"] {
   accent-color: rgb(var(--accent));
 }
+
+/* Les infobulles Recharts cachées sont placées hors écran : on évite qu'elles élargissent la page sur mobile. */
+html,
+body {
+  overflow-x: clip;
+}

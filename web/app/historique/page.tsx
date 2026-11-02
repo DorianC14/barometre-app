@@ -68,7 +68,7 @@ export default function Historique() {
     <div className="space-y-5">
       <PageTitle title={`Historique du score · ${region === "world" ? "Monde" : "Europe / France"}`}>
         Score recalculé jour par jour depuis 2007 avec exactement la même méthode, sans utiliser d'information future. On vérifie
-        ainsi qu'il monte bien lors des grandes crises (2008, 2011, 2020, 2022).
+        ainsi qu'il réagit aux grands chocs (2008, 2020, 2022, droits de douane de 2025).
       </PageTitle>
 
       <div className="flex flex-wrap items-center gap-2 text-sm">

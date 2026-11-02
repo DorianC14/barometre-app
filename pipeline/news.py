@@ -28,7 +28,6 @@ FEEDS = {
         ("Zonebourse", "https://www.zonebourse.com/rss/", "fr"),
         ("Les Echos", "https://syndication.lesechos.fr/rss/rss_finance-marches.xml", "fr"),
         ("Les Echos", "https://syndication.lesechos.fr/rss/rss_economie.xml", "fr"),
-        ("Boursorama", "https://www.boursorama.com/rss/actualites/economie", "fr"),
         ("BFM Bourse", gnews("site:tradingsat.com OR site:bfmtv.com bourse when:1d"), "fr"),
         ("Le Figaro Bourse", "https://www.lefigaro.fr/rss/figaro_bourse.xml", "fr"),
         ("Google Actualités", gnews("bourse OR CAC 40 OR BCE OR économie zone euro when:1d"), "fr"),
@@ -49,6 +48,12 @@ TAG_RE = re.compile(r"<[^>]+>")
 WORD_RE = re.compile(r"[a-zA-ZÀ-ÿœŒ'\-]+")
 STOP = set("""le la les un une des de du d l et en à au aux pour par sur dans avec est sont the a an of to in on for
 and is are at by with from as its it that this be has have after over new says said vs""".split())
+
+
+def latin(text: str) -> bool:
+    """Écarte les titres en écriture non latine (le dictionnaire est français / anglais)."""
+    letters = [c for c in text if c.isalpha()]
+    return bool(letters) and sum(c <= "ɏ" for c in letters) / len(letters) >= 0.8
 
 
 def clean(text: str) -> str:
@@ -160,7 +165,7 @@ def collect(hours: int = 36) -> dict:
                     title, src_name = title.rsplit(" - ", 1)
                     src = src_name.strip() if source.startswith("Google") else source
                 key = re.sub(r"\W+", "", title.lower())[:80]
-                if not title or key in seen:
+                if not title or key in seen or not latin(title):
                     continue
                 seen.add(key)
                 pub = e.get("published_parsed") or e.get("updated_parsed")

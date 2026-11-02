@@ -28,8 +28,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Header />
           <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
           <footer className="mx-auto max-w-7xl px-4 pb-10 pt-4 text-xs muted">
-            Projet pédagogique KEDGE BS, Gestion d'actifs 2025-2026. Sources : FRED, BCE, Eurostat, INSEE, OCDE, Yahoo
-            Finance, multpl, Caldara et Iacoviello, presse financière. Ne constitue pas un conseil en investissement.
+            Projet pédagogique KEDGE BS, Gestion d'actifs 2025-2026. Sources : FRED, BCE, Eurostat, INSEE, OCDE, STOXX,
+            Twelve Data, Yahoo Finance, multpl, Caldara et Iacoviello, Baker-Bloom-Davis (EPU), presse financière. Ne constitue pas un conseil en investissement.
           </footer>
         </RegionProvider>
       </body>

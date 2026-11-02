@@ -6,15 +6,18 @@ import { Loading, PageTitle, ZoneBadge } from "@/components/ui";
 import { colorOf, fmt, PILLAR_COLORS, useData, useRegion } from "@/lib/data";
 
 const SOURCES = [
-  ["FRED (Fed de Saint-Louis)", "Macro US, taux, spreads haut rendement, NFCI, crédit BIS, incertitude EPU", "https://fred.stlouisfed.org"],
+  ["FRED (Fed de Saint-Louis)", "Macro, taux, spreads haut rendement, NFCI, crédit BIS, VIX, Brent, indices US et Nikkei en secours", "https://fred.stlouisfed.org"],
+  ["Economic Policy Uncertainty (Baker, Bloom, Davis)", "Incertitude politique Europe et France", "https://www.policyuncertainty.com"],
   ["BCE Data Portal", "Courbe des taux zone euro, taux de dépôt, indicateur de stress CISS", "https://data.ecb.europa.eu"],
   ["Eurostat", "Chômage, sentiment économique", "https://ec.europa.eu/eurostat"],
   ["INSEE", "Climat des affaires, PIB et prix France", "https://www.insee.fr"],
   ["OCDE", "Indicateurs composites avancés (États-Unis, Chine, Japon, zone euro, France)", "https://data-explorer.oecd.org"],
-  ["Yahoo Finance (Stooq en secours)", "Indices, VIX, VSTOXX, Brent, EUR/USD, dollar, or, taux 10 ans US", "https://finance.yahoo.com"],
+  ["Twelve Data (API officielle, clé gratuite)", "Cours toutes les 15 min : S&P 500, Nasdaq, Euro Stoxx 50, CAC 40, Shanghai, or", "https://twelvedata.com"],
+  ["STOXX (fichiers officiels)", "Euro Stoxx 50 et VSTOXX", "https://www.stoxx.com"],
+  ["Yahoo Finance (secours)", "Indices, VIX, Brent, EUR/USD, dollar, or, taux 10 ans US quand il répond", "https://finance.yahoo.com"],
   ["multpl (données Robert Shiller)", "PER et CAPE du S&P 500", "https://www.multpl.com"],
   ["Caldara et Iacoviello", "Indice de risque géopolitique (GPR)", "https://www.matteoiacoviello.com/gpr.htm"],
-  ["Presse (RSS)", "Zonebourse, Les Echos, Boursorama, CNBC, MarketWatch, Nikkei Asia, SCMP, Reuters", ""],
+  ["Presse (RSS)", "Zonebourse, Les Echos, BFM Bourse, Le Figaro Bourse, CNBC, MarketWatch, Nikkei Asia, SCMP, Reuters (titres et résumés publics uniquement)", ""],
 ];
 
 export default function Methodologie() {
@@ -171,7 +174,7 @@ export default function Methodologie() {
         <h2 className="card-title mb-2">Limites</h2>
         <ul className="list-disc space-y-1 pl-5 muted">
           <li>Données de marché gratuites différées d'environ 15 minutes : suffisant pour un baromètre de fond.</li>
-          <li>Yahoo Finance n'est pas une API officielle ; Stooq et FRED servent de secours.</li>
+          <li>Les cours en continu viennent de l'offre gratuite de Twelve Data (800 requêtes par jour) ; si elle ne répond pas, Yahoo, STOXX et FRED prennent le relais avec un jour de décalage.</li>
           <li>Le PER européen et les flux de capitaux détaillés sont payants : la valorisation européenne utilise un proxy (cours / moyenne 10 ans).</li>
           <li>Le sentiment des news démarre avec l'application : sa note utilise un Min-Max sur l'historique disponible tant qu'il est court.</li>
           <li>Le test historique utilise des rendements approximés (indices de prix, duration obligataire de 8 ans).</li>

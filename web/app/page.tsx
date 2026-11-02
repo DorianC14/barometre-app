@@ -115,7 +115,13 @@ export default function Dashboard() {
               {intra.length > 1 ? (
                 <ResponsiveContainer>
                   <LineChart data={intra} margin={{ top: 8, right: 8, left: -20 }}>
-                    <XAxis dataKey="t" tickFormatter={(t) => new Date(t).toLocaleDateString("fr-FR", { weekday: "short" })} tick={{ fontSize: 10, fill: "rgb(var(--ink-soft))" }} stroke="rgb(var(--line))" minTickGap={30} />
+                    <XAxis dataKey="t" tickFormatter={(t) => {
+                      const d = new Date(t);
+                      const span = intra.length ? new Date(intra[intra.length - 1].t).getTime() - new Date(intra[0].t).getTime() : 0;
+                      return span < 2 * 86400000
+                        ? d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })
+                        : d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", timeZone: "Europe/Paris" });
+                    }} tick={{ fontSize: 10, fill: "rgb(var(--ink-soft))" }} stroke="rgb(var(--line))" minTickGap={30} />
                     <YAxis domain={["auto", "auto"]} tick={{ fontSize: 10, fill: "rgb(var(--ink-soft))" }} stroke="rgb(var(--line))" />
                     <Tooltip labelFormatter={(t) => dateFr(t, true)} formatter={(v: number, n: string) => [fmt(v), n === "world" ? "Monde" : "Europe / France"]} />
                     <Line dataKey="world" stroke="#60a5fa" dot={false} strokeWidth={region === "world" ? 2.5 : 1} />

@@ -59,6 +59,9 @@ def load_raw(name: str):
     return df["value"].dropna(), (srcf.read_text().strip() if srcf.exists() else "")
 
 
+INCREMENTAL = {"stoxx"}
+
+
 def fetch_one(name: str, spec: dict, quick: bool = False):
     """Essaie chaque source dans l'ordre ; renvoie (série, type de source) ou lève l'erreur."""
     errors = []
@@ -79,6 +82,14 @@ def fetch_one(name: str, spec: dict, quick: bool = False):
                 ser = src.yahoo(ident, rng="1mo" if quick else "max")
             elif kind == "stooq":
                 ser = src.stooq(ident)
+            elif kind == "twelvedata":
+                ser = src.twelvedata(ident, quick=quick)
+                # le symbole fait partie de la source : un indice et un ETF n'ont pas la même échelle
+                return ser, f"twelvedata:{ident}"
+            elif kind == "epu":
+                ser = src.epu_europe(ident)
+            elif kind == "stoxx":
+                ser = src.stoxx(ident)
             elif kind == "multpl":
                 ser = src.multpl(ident)
             elif kind == "gpr":
@@ -98,8 +109,12 @@ def refresh(names: list[str], quick: bool, status: dict):
         try:
             ser, kind = fetch_one(name, spec, quick=quick)
             old, old_kind = load_raw(name)
-            if quick and old is not None and old_kind == kind:
+            if quick and (old is None or old_kind != kind) and kind not in INCREMENTAL:
+                # changement de source : on reprend l'historique complet pour ne pas mélanger
+                ser, kind = fetch_one(name, spec, quick=False)
+            if old is not None and ((quick and old_kind == kind) or kind in INCREMENTAL):
                 # mise à jour incrémentale : on garde l'historique, on remplace la fin
+                # (les fichiers STOXX ne couvrent que 3 mois : on prolonge toujours le cache)
                 ser = pd.concat([old[old.index < ser.index[0]], ser])
             save_raw(name, ser, kind)
             status[name] = {"ok": True, "source": kind, "last": ser.index[-1].strftime("%Y-%m-%d"),
@@ -121,7 +136,7 @@ def news_series() -> dict:
     for key, region in (("world", "news_world"), ("europe", "news_europe")):
         pts = [(h["date"], h[key]) for h in hist if h.get(key) is not None]
         if pts:
-            s = pd.Series({pd.Timestamp(d): v for d, v in pts}).sort_index()
+            s = pd.Series({pd.to_datetime(d, utc=True).tz_localize(None): v for d, v in pts}).sort_index()
             s = s.groupby(s.index.normalize()).mean()
             out[region] = s.rolling("7D").mean()
     return out

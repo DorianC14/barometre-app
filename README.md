@@ -8,7 +8,7 @@ de 0 (euphorie) à 100 (stress), pour le **Monde** et pour l'**Europe / France**
 
 ```
 pipeline/                 Collecte et calcul (Python)
-  sources.py              Connecteurs : FRED, BCE, Eurostat, INSEE, OCDE, Yahoo, Stooq, multpl, GPR
+  sources.py              Connecteurs : FRED, BCE, Eurostat, INSEE, OCDE, STOXX, Twelve Data, Yahoo, multpl, GPR, EPU
   config.py               Méthodologie chiffrée : séries, 22 indicateurs, piliers, poids, zones, allocation
   transforms.py           Variation sur 1 an, écart à la moyenne 200 jours, credit impulse…
   scoring.py              Normalisation (z-score 10 ans → 0-100), pondération, contributions,
@@ -17,6 +17,7 @@ pipeline/                 Collecte et calcul (Python)
   run.py                  Point d'entrée : --mode markets | full | news
   tests/                  Tests de la logique de calcul
 web/                      Application Next.js (7 pages), export statique pour Vercel
+docs/                     Note d'explication (2 pages, HTML et PDF)
 .github/workflows/        Actualisation automatique (GitHub Actions)
 ```
 
@@ -37,12 +38,15 @@ Si une source ne répond pas, la dernière valeur connue est gardée et signalé
 
 1. Créer un dépôt GitHub **public** et y pousser ce dossier. Un dépôt public donne des minutes
    GitHub Actions illimitées. Avec un dépôt privé, passer le cron des marchés à `*/30`.
-2. Onglet **Actions** → « Actualisation des données » → **Run workflow** (mode `full`).
+2. Créer une clé gratuite sur **twelvedata.com**, puis dans le dépôt : *Settings → Secrets and variables →
+   Actions → New repository secret*, nom `TWELVEDATA_API_KEY`. Sans clé, les cours passent par Yahoo
+   (souvent bloqué pour les robots) puis par FRED et STOXX, avec un jour de décalage.
+3. Onglet **Actions** → « Actualisation des données » → **Run workflow** (mode `full`).
    Au bout de 5 à 10 minutes, la branche `data` apparaît.
-3. Sur **Vercel** : *Add New Project* → importer le dépôt → **Root Directory : `web`**.
+4. Sur **Vercel** : *Add New Project* → importer le dépôt → **Root Directory : `web`**.
    Ajouter la variable d'environnement :
    `NEXT_PUBLIC_DATA_URL = https://raw.githubusercontent.com/<compte>/<dépôt>/data`
-4. Déployer. Le site est en ligne et suit les données automatiquement.
+5. Déployer. Le site est en ligne et suit les données automatiquement.
 
 GitHub peut suspendre les tâches programmées d'un dépôt public après 60 jours sans activité.
 Dans ce cas, il suffit de les réactiver dans l'onglet Actions.
@@ -51,6 +55,7 @@ Dans ce cas, il suffit de les réactiver dans l'onglet Actions.
 
 ```bash
 pip install -r pipeline/requirements.txt
+export TWELVEDATA_API_KEY=...   # facultatif
 cd pipeline && python run.py --mode full && python run.py --mode news   # écrit ../data/*.json
 cd ../web && npm install && mkdir -p public/data && cp ../data/*.json public/data/ && npm run dev
 ```
