@@ -1,0 +1,9 @@
+pandas>=2.2
+numpy>=1.26
+scipy>=1.11
+requests>=2.31
+feedparser>=6.0
+xlrd>=2.0
+lxml>=5.0
+openpyxl>=3.1
+pytest>=8.0

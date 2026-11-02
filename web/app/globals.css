@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink: 15 23 42;
+  --ink-soft: 71 85 105;
+  --surface: 241 245 249;
+  --surface-raised: 255 255 255;
+  --line: 203 213 225;
+  --accent: 37 99 235;
+  color-scheme: light;
+}
+.dark {
+  --ink: 226 232 240;
+  --ink-soft: 148 163 184;
+  --surface: 9 13 22;
+  --surface-raised: 17 24 39;
+  --line: 39 51 71;
+  --accent: 96 165 250;
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+}
+body {
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+.card {
+  @apply rounded-xl border border-line bg-surface-raised p-4 sm:p-5;
+}
+.card-title {
+  @apply text-sm font-semibold text-ink;
+}
+.muted {
+  @apply text-ink-soft;
+}
+.flash {
+  animation: flash 1.2s ease-out;
+}
+@keyframes flash {
+  0% {
+    background-color: rgb(var(--accent) / 0.25);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: rgb(var(--surface-raised)) !important;
+  border: 1px solid rgb(var(--line)) !important;
+  border-radius: 8px;
+  color: rgb(var(--ink));
+}
+input[type="range"] {
+  accent-color: rgb(var(--accent));
+}

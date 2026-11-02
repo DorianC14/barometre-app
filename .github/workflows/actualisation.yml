@@ -1,0 +1,90 @@
+name: Actualisation des données
+
+# Heures en UTC (Paris = UTC+1 en hiver, UTC+2 en été).
+on:
+  schedule:
+    - cron: "*/15 * * * *"  # marchés : toutes les 15 minutes, 24 h sur 24
+    - cron: "7 4 * * *"     # collecte complète (macro, taux, crédit…) : chaque jour vers 5 h-6 h
+    - cron: "2 5 * * *"     # revue de presse du matin : vers 6 h-7 h
+    - cron: "2 16 * * *"    # revue de presse du soir : vers 17 h-18 h
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Type de mise à jour"
+        type: choice
+        options: [full, markets, news]
+        default: full
+
+concurrency:
+  group: actualisation-donnees
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+
+      - name: Installer les dépendances
+        run: pip install -r pipeline/requirements.txt
+
+      - name: Récupérer la branche « data » (données publiées)
+        run: |
+          git config --global user.name "barometre-bot"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin data >/dev/null; then
+            git fetch --depth=1 origin data
+            git worktree add -B data data origin/data
+          else
+            git worktree add --orphan -b data data
+          fi
+
+      - name: Choisir le type de mise à jour
+        id: mode
+        run: |
+          case "${{ github.event.schedule }}" in
+            "7 4 * * *") m=full ;;
+            "2 5 * * *"|"2 16 * * *") m=news ;;
+            "") m="${{ inputs.mode || 'full' }}" ;;
+            *) m=markets ;;
+          esac
+          echo "mode=$m" >> "$GITHUB_OUTPUT"
+          echo "Mode : $m"
+
+      - name: Collecter et recalculer les scores
+        working-directory: pipeline
+        env:
+          DATA_DIR: ${{ github.workspace }}/data
+        run: python run.py --mode ${{ steps.mode.outputs.mode }}
+
+      - name: Publier les nouvelles données
+        working-directory: data
+        run: |
+          git add -A
+          if git diff --cached --quiet; then echo "Rien de neuf"; exit 0; fi
+          # Un seul commit gardé sur la branche data, pour qu'elle reste légère
+          if git rev-parse --verify -q HEAD >/dev/null; then
+            git commit --amend -q -m "Données ${{ steps.mode.outputs.mode }} $(date -u +%FT%TZ)"
+          else
+            git commit -q -m "Données ${{ steps.mode.outputs.mode }} $(date -u +%FT%TZ)"
+          fi
+          for i in 1 2 3; do git push -f origin data && break || sleep $((i*5)); done
+
+  tests:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r pipeline/requirements.txt && python -m pytest -q pipeline/tests
