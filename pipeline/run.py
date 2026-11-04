@@ -175,6 +175,11 @@ def compute(meta: dict):
         if s is not None and not s.empty:
             R[name] = s
             used[name] = kind
+    if "eurusd" in R:
+        fx = R["eurusd"]
+        for name, kind in used.items():
+            if kind in cfg.ETF_EN_EUROS:
+                R[name] = (R[name] / fx.reindex(R[name].index, method="ffill")).dropna()
     for k, v in news_series().items():
         R[k] = v
         used[k] = "news"

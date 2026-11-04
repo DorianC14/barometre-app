@@ -12,6 +12,10 @@ from transforms import chg, dev1y, impulse, inv_yield, ma_gap, mean_window, pric
 # 1. Séries brutes : nom interne -> liste de sources (la première qui répond gagne)
 #    Une source = (type, identifiant[, options]). "market" = rafraîchie toutes les 15 min.
 # ---------------------------------------------------------------------------
+# ETF européens cotés en dollars (Twelve Data) : convertis en euros avec EUR/USD avant calcul,
+# pour suivre l'indice qu'ils répliquent et non le change.
+ETF_EN_EUROS = {"twelvedata:FEZ", "twelvedata:EWQ"}
+
 SERIES: dict[str, dict] = {
     # --- Macro (FRED, CSV public sans clé)
     "us_gdp": {"src": [("fred", "GDPC1")]},
@@ -41,13 +45,15 @@ SERIES: dict[str, dict] = {
     "ea_10y": {"src": [("ecb", "YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y")]},
     "oat_10y": {"src": [("fred", "IRLTLT01FRM156N")]},
     "bund_10y": {"src": [("fred", "IRLTLT01DEM156N")]},
-    # --- Marchés (Yahoo en continu, Stooq / FRED en secours)
-    "spx": {"src": [("twelvedata", "SPX"), ("yahoo", "^GSPC"), ("fred", "SP500")], "market": True},
-    "ndx": {"src": [("twelvedata", "IXIC"), ("yahoo", "^IXIC"), ("fred", "NASDAQCOM")], "market": True},
+    # --- Marchés : indices via Yahoo (FRED / STOXX en secours) ; l'offre gratuite Twelve Data
+    # refuse les indices (SPX, SX5E réservés Pro ; FCHI, IXIC, 000001:SSE inconnus) : elle sert
+    # pour l'or spot (XAU/USD) et, en dernier recours, pour des ETF répliquant chaque indice.
+    "spx": {"src": [("yahoo", "^GSPC"), ("fred", "SP500"), ("twelvedata", "SPY")], "market": True},
+    "ndx": {"src": [("yahoo", "^IXIC"), ("fred", "NASDAQCOM"), ("twelvedata", "ONEQ")], "market": True},
     "nikkei": {"src": [("yahoo", "^N225"), ("fred", "NIKKEI225")], "market": True},
-    "shanghai": {"src": [("twelvedata", "000001:SSE"), ("yahoo", "000001.SS"), ("twelvedata", "MCHI")], "market": True},
-    "sx5e": {"src": [("twelvedata", "SX5E"), ("yahoo", "^STOXX50E"), ("stoxx", "h_3msx5e"), ("twelvedata", "FEZ")], "market": True},
-    "cac": {"src": [("twelvedata", "FCHI"), ("yahoo", "^FCHI"), ("twelvedata", "EWQ")], "market": True},
+    "shanghai": {"src": [("yahoo", "000001.SS"), ("twelvedata", "MCHI")], "market": True},
+    "sx5e": {"src": [("yahoo", "^STOXX50E"), ("twelvedata", "FEZ"), ("stoxx", "h_3msx5e")], "market": True},
+    "cac": {"src": [("yahoo", "^FCHI"), ("twelvedata", "EWQ")], "market": True},
     "eurusd": {"src": [("yahoo", "EURUSD=X"), ("ecb", "EXR/D.USD.EUR.SP00.A"), ("fred", "DEXUSEU")], "market": True},
     "dxy": {"src": [("yahoo", "DX-Y.NYB"), ("fred", "DTWEXBGS")], "market": True},
     "gold": {"src": [("twelvedata", "XAU/USD"), ("yahoo", "GC=F")], "market": True},

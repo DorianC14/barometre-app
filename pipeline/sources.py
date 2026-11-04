@@ -147,7 +147,10 @@ def yahoo(ticker: str, rng: str = "max", interval: str = "1d") -> pd.Series:
 
 # --------------------------------------------------------------------------- Twelve Data
 # Offre gratuite : 800 crédits par jour et 8 par minute (1 crédit = 1 série demandée).
-# Le baromètre en utilise ~6 toutes les 15 min (≈ 600 par jour). Clé : TWELVEDATA_API_KEY.
+# L'offre gratuite refuse les indices : le baromètre y prend 4 séries par actualisation (or XAU/USD,
+# ETF FEZ pour l'Euro Stoxx 50, EWQ pour le CAC 40, MCHI pour la Chine) quand Yahoo ne répond pas ;
+# SPY et ONEQ ne servent que si Yahoo et FRED tombent. Toutes les 15 min ≈ 400 crédits par jour.
+# Clé : TWELVEDATA_API_KEY.
 _TD_LAST = [0.0]
 _TD_MIN_GAP = 8.0  # secondes entre deux appels (8 par minute)
 

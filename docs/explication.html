@@ -31,7 +31,7 @@
 
 <div class="page">
   <h1>Baromètre 2026 : un score de tension financière actualisé en continu</h1>
-  <div class="sub">KEDGE BS, Gestion d'actifs 2025-2026 · Note d'explication · chiffres du 2 novembre 2026 à 11 h 45 (heure de Paris)</div>
+  <div class="sub">KEDGE BS, Gestion d'actifs 2025-2026 · Note d'explication · chiffres du 4 novembre 2026 à 9 h 06 (heure de Paris)</div>
 
   <p>Notre baromètre résume en un seul chiffre l'état de santé des marchés. Il va de 0 à 100 et se lit comme un thermomètre de stress :
   0 à 20, euphorie ; 20 à 40, contexte favorable ; 40 à 60, neutre ; 60 à 80, prudence ; 80 à 100, stress. Il existe en deux versions,
@@ -54,9 +54,9 @@
   <h2><span>2</span>Les sources de données</h2>
   <p>Nous n'utilisons que des sources ouvertes ou gratuites, sans abonnement : <b>FRED</b> (Fed de Saint-Louis) pour la macro américaine, les taux,
   les spreads et le crédit de la BRI ; le portail de la <b>BCE</b> pour la courbe des taux euro, l'EUR/USD et l'indicateur de stress CISS ;
-  <b>Eurostat</b> et l'<b>INSEE</b> pour le chômage et le climat des affaires ; l'<b>OCDE</b> pour les indicateurs avancés ; <b>STOXX</b> pour l'Euro Stoxx 50 et le VSTOXX ;
+  <b>Eurostat</b> et l'<b>INSEE</b> pour le chômage et le climat des affaires ; l'<b>OCDE</b> pour les indicateurs avancés ; <b>STOXX</b> pour le VSTOXX ;
   <b>multpl</b> (données de Robert Shiller) pour le CAPE ; Caldara et Iacoviello pour le risque géopolitique ; Baker, Bloom et Davis pour l'incertitude politique.
-  Les cours en continu (CAC 40, Shanghai, or) passent par l'API gratuite de <b>Twelve Data</b>. La presse est lue via les flux RSS publics
+  L'or et les ETF répliquant l'Euro Stoxx 50, le CAC 40 et Shanghai passent par l'API gratuite de <b>Twelve Data</b>. La presse est lue via les flux RSS publics
   (Les Echos, Zonebourse, BFM Bourse, Le Figaro, MarketWatch, Reuters, Nikkei Asia, SCMP), titres et résumés uniquement.</p>
 
   <h2><span>3</span>La méthode de collecte</h2>
@@ -84,29 +84,30 @@
   son poids est redistribué dans son pilier, ce qui évite qu'une source en panne fausse le résultat. Le calcul est entièrement additif,
   ce qui permet de dire exactement combien chaque indicateur ajoute ou retire :</p>
   <span class="formula">contribution = poids du pilier × poids dans le pilier × (note − 50) &nbsp;&nbsp;→&nbsp;&nbsp; score = 50 + Σ contributions</span>
-  <p>Pour vérifier que nos poids « à dire d'expert » ne sont pas arbitraires, nous calculons deux variantes : poids égaux (57,0 pour le Monde)
-  et poids issus d'une analyse en composantes principales (57,1). Elles restent à moins de deux points du score officiel (58,6), donc le résultat ne dépend pas d'un réglage fin.
-  Nous avons aussi recalculé le score jour par jour depuis 2007, sans information future : il monte nettement lors de la crise de 2008 (75 en Europe),
-  du Covid (62 en avril 2020) et atteint son maximum avec le choc de taux de 2022 (plus de 80 en septembre), ce qui nous rassure sur sa capacité à signaler les tensions.</p>
+  <p>Pour vérifier que nos poids « à dire d'expert » ne sont pas arbitraires, nous calculons deux variantes : poids égaux (57,2 pour le Monde)
+  et poids issus d'une analyse en composantes principales (59,0). Elles restent à moins de deux points du score officiel (58,8), donc le résultat ne dépend pas d'un réglage fin.
+  Nous avons aussi recalculé le score jour par jour depuis 2007, sans information future : il monte nettement lors de la crise de 2008 (77 en Europe en octobre),
+  du Covid (63 pour le Monde en avril 2020) et du choc de taux de 2022 (77 pour le Monde en octobre), ce qui nous rassure sur sa capacité à signaler les tensions.
+  Suivre chaque mois l'allocation conseillée aurait rapporté 3,3 % par an en Europe depuis 2007 contre 2,3 % pour un 60/40 fixe, avec une perte maximale de −20 % au lieu de −36 % (test indicatif, sans frais).</p>
 
   <h2><span>6</span>Analyse et interprétation : ce que dit le score aujourd'hui</h2>
   <div class="kpi">
-    <div><span class="small">Monde</span><b class="neutre">58,6 / 100</b>Neutre, à la limite de la prudence<br><span class="small">57,9 il y a 30 jours · 60,2 il y a 7 jours</span></div>
-    <div><span class="small">Europe / France</span><b class="prudence">61,3 / 100</b>Prudence<br><span class="small">59,5 il y a 30 jours · 61,1 il y a 7 jours</span></div>
+    <div><span class="small">Monde</span><b class="neutre">58,8 / 100</b>Neutre, à la limite de la prudence<br><span class="small">57,5 il y a 30 jours · 57,5 il y a 7 jours</span></div>
+    <div><span class="small">Europe / France</span><b class="prudence">60,7 / 100</b>Prudence<br><span class="small">60,8 il y a 30 jours · 61,0 il y a 7 jours</span></div>
   </div>
   <table>
     <tr><th>Pilier</th><th class="n">Monde</th><th class="n">Europe / France</th><th>Lecture</th></tr>
-    <tr><td>Banques centrales</td><td class="n">78</td><td class="n">88</td><td>Le marché anticipe de nouvelles hausses de taux ; taux 10 ans US à 4,98 %, OAT − Bund à 1,01 point</td></tr>
-    <tr><td>Risque et géopolitique</td><td class="n">57</td><td class="n">69</td><td>Brent en hausse de 34 % en 3 mois, incertitude politique française à un niveau très élevé</td></tr>
-    <tr><td>Marchés</td><td class="n">63</td><td class="n">53</td><td>Actions américaines chères (CAPE de 40), prime de risque négative (−1,2 point)</td></tr>
+    <tr><td>Banques centrales</td><td class="n">78</td><td class="n">88</td><td>Le marché anticipe de nouvelles hausses de taux ; taux 10 ans US à 4,91 %, OAT − Bund à 1,01 point</td></tr>
+    <tr><td>Risque et géopolitique</td><td class="n">52</td><td class="n">58</td><td>Brent en hausse de 34 % en 3 mois, incertitude politique française à un niveau très élevé</td></tr>
+    <tr><td>Marchés</td><td class="n">69</td><td class="n">60</td><td>Actions américaines chères (CAPE de 40), prime de risque négative (−1,1 point)</td></tr>
     <tr><td>Macro</td><td class="n">42</td><td class="n">46</td><td>Croissance modeste mais positive, chômage stable ; inflation à 3,7 %, au-dessus de la cible</td></tr>
     <tr><td>Flux et sentiment</td><td class="n">45</td><td class="n">40</td><td>Conditions financières encore souples (NFCI −0,49, CISS très bas) ; presse au ton neutre</td></tr>
   </table>
   <p><b>Quels indicateurs pèsent le plus ?</b> Côté tension, c'est d'abord le taux directeur anticipé (+3,2 points sur le score Monde, +3,5 en Europe) :
-  le taux 2 ans américain dépasse de 0,73 point le taux de la Fed, signe que le marché parie sur un resserrement. Viennent ensuite la prime de risque
-  actions (+2,3) et le niveau du taux 10 ans (+2,3). En Europe, l'écart OAT − Bund (+2,1) et l'incertitude politique (+1,7) prennent le relais :
-  le risque spécifiquement français est visible dans le score. À l'inverse, quelques indicateurs freinent la tension : le dollar qui reste proche
-  de sa moyenne (−1,1), le chômage contenu (−0,9) et des spreads de crédit encore serrés (−0,8 ; 3,26 points aux États-Unis).</p>
+  le taux 2 ans américain dépasse de 0,71 point le taux de la Fed, signe que le marché parie sur un resserrement. Viennent ensuite la prime de risque
+  actions (+2,3) et le niveau du taux 10 ans (+2,2). En Europe, l'écart OAT − Bund (+2,1) et le risque géopolitique et politique (+1,4) prennent le relais :
+  le risque spécifiquement français est visible dans le score. À l'inverse, quelques indicateurs freinent la tension : l'or qui recule sur 3 mois (−1,8),
+  le chômage contenu (−0,9), le dollar proche de sa moyenne (−0,8) et l'indicateur avancé de l'OCDE (−0,7) ; les spreads de crédit restent serrés (3,43 points aux États-Unis).</p>
   <p><b>Quel signal ?</b> Le score Monde est neutre mais tout proche du seuil de prudence, et l'Europe l'a franchi. Le message est cohérent :
   l'économie tient, mais le coût de l'argent et l'énergie remontent, alors que les actions américaines sont déjà chères. Les marchés du crédit,
   eux, ne montrent pas encore de stress, ce qui écarte un scénario de crise à court terme. La grille « All Weather » classe le Monde en
