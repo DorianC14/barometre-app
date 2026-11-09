@@ -2,7 +2,7 @@
 
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Bar, Delta, Loading, PageTitle, ZoneBadge } from "@/components/ui";
-import { colorOf, fmt, PILLAR_COLORS, useData, useRegion } from "@/lib/data";
+import { colorOf, dateFr, fmt, PILLAR_COLORS, useData, useRegion } from "@/lib/data";
 
 export default function Piliers() {
   const { region } = useRegion();
@@ -16,8 +16,9 @@ export default function Piliers() {
   return (
     <div className="space-y-5">
       <PageTitle title={`Piliers et contributions · ${R.label}`}>
-        Le score global est la moyenne pondérée des 5 piliers. Chaque pilier est la moyenne de ses indicateurs (le taux
-        anticipé compte double). Toutes les notes sont des notes de tension : 0 = euphorie, 100 = stress.
+        Le score global est la moyenne pondérée des 5 piliers, comparée ensuite aux dix dernières années. Chaque pilier est la
+        moyenne de ses indicateurs (le taux anticipé compte double, et un indicateur qui bouge brutalement pèse temporairement
+        plus lourd). Toutes les notes sont des notes de tension : 0 = euphorie, 100 = stress.
       </PageTitle>
 
       <div className="grid gap-4 lg:grid-cols-5">
@@ -45,12 +46,13 @@ export default function Piliers() {
                 <th className="pb-2 font-medium">Pilier</th>
                 <th className="pb-2 font-medium">Poids</th>
                 <th className="pb-2 font-medium">Note</th>
+                <th className="pb-2 font-medium">Normale 10 ans</th>
                 <th className="pb-2 font-medium">Apport au score</th>
               </tr>
             </thead>
             <tbody>
               {R.pillars.map((p: any) => {
-                const apport = R.contributions.filter((c: any) => c.pillar === p.id).reduce((a: number, c: any) => a + c.contribution, 0);
+                const apport = p.points ?? R.contributions.filter((c: any) => c.pillar === p.id).reduce((a: number, c: any) => a + c.contribution, 0);
                 return (
                   <tr key={p.id} className="border-t border-line">
                     <td className="py-2">
@@ -59,6 +61,7 @@ export default function Piliers() {
                     </td>
                     <td className="num">{p.weight} %</td>
                     <td className="num font-semibold" style={{ color: colorOf(p.score) }}>{fmt(p.score, 0)}</td>
+                    <td className="num muted">{fmt(p.normal, 0)}</td>
                     <td className="num" style={{ color: apport > 0 ? "#ef4444" : "#22c55e" }}>
                       {apport > 0 ? "+" : "−"}
                       {fmt(Math.abs(apport), 2)} pt
@@ -69,8 +72,22 @@ export default function Piliers() {
             </tbody>
           </table>
           <p className="mt-3 text-xs muted">
-            Apport = poids × (note − 50). La somme des apports, plus 50, donne exactement le score global ({fmt(R.score)}).
+            Apport = points de score ajoutés (ou retirés) parce que le pilier est au-dessus (ou en dessous) de sa normale des dix
+            dernières années, compte tenu de son poids. 50 + la somme des apports = score du jour ({fmt(R.score)}).
           </p>
+          {R.boosts?.length > 0 && (
+            <div className="mt-3 rounded-lg bg-amber-500/10 p-3 text-xs">
+              <div className="mb-1 font-semibold text-amber-600 dark:text-amber-300">Poids temporairement relevés</div>
+              <ul className="space-y-0.5">
+                {R.boosts.map((b: any) => (
+                  <li key={b.id}>
+                    {b.label.split(" (")[0]} : poids ×{fmt(b.multiplier, 2)} après un mouvement de {fmt(Math.abs(b.change ?? 0), 0)} points le {dateFr(b.date)}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 muted">Un indicateur qui bouge brutalement pèse jusqu'à 50 % de plus, puis revient à son poids normal en 2 à 3 semaines.</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -86,6 +103,7 @@ export default function Piliers() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {list.filter((i) => i.pillar === p.id).map((i) => {
               const c = R.contributions.find((x: any) => x.id === i.id);
+              const boost = R.boosts?.find((x: any) => x.id === i.id);
               return (
                 <div key={i.id} className="rounded-lg border border-line p-3">
                   <div className="flex items-start justify-between gap-2">
@@ -95,13 +113,20 @@ export default function Piliers() {
                   <div className="my-2"><Bar value={i.tension} /></div>
                   <div className="flex flex-wrap justify-between gap-1 text-xs muted">
                     <span>Sens : {i.direction}{i.weight_in_pillar > 1 ? " · poids double" : ""}</span>
-                    {c && <span className="num">poids réel {fmt(c.weight)} %</span>}
+                    {c && <span className="num">poids réel {fmt(c.weight)} %{boost && <span className="text-amber-500"> · ×{fmt(boost.multiplier, 2)}</span>}</span>}
                   </div>
                   {!i.available && <p className="mt-1 text-xs text-amber-500">Source momentanément indisponible.</p>}
                 </div>
               );
             })}
           </div>
+          {p.text?.length > 0 && (
+            <div className="mt-3 space-y-1 rounded-lg bg-surface p-3 text-sm leading-relaxed">
+              {p.text.map((l: string, k: number) => (
+                <p key={k} className={k === p.text.length - 1 ? "font-medium" : ""}>{l}</p>
+              ))}
+            </div>
+          )}
         </section>
       ))}
     </div>

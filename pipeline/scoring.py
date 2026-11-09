@@ -82,6 +82,54 @@ def sparkline(s: pd.Series, days: int = 365) -> list:
     return [[d.strftime("%Y-%m-%d"), r1(v, 3)] for d, v in w.items()]
 
 
+# --------------------------------------------------------------------------- poids variables
+def shock_multiplier(F: pd.Series) -> tuple[pd.Series, pd.Series]:
+    """Multiplicateur de poids (1 à 1 + SHOCK_MAX_BOOST) déclenché par un mouvement brutal de la note.
+
+    intensité = (|variation de la note sur 5 jours| − 10) / (25 − 10), bornée entre 0 et 1 ;
+    le surplus de poids décroît ensuite de moitié chaque semaine. Renvoie (multiplicateur, variation).
+    """
+    d = F.diff(cfg.SHOCK_LOOKBACK)
+    inten = ((d.abs() - cfg.SHOCK_START) / (cfg.SHOCK_FULL - cfg.SHOCK_START)).clip(0, 1).fillna(0).to_numpy()
+    decay = 0.5 ** (1 / cfg.SHOCK_HALF_LIFE)
+    e = np.empty_like(inten)
+    prev = 0.0
+    for k, x in enumerate(inten):
+        prev = x if x > prev * decay else prev * decay
+        e[k] = prev
+    return pd.Series(1 + cfg.SHOCK_MAX_BOOST * e, index=F.index), d
+
+
+def weighted_mean_tv(frame: pd.DataFrame, W: pd.DataFrame) -> pd.Series:
+    """Moyenne pondérée avec des poids qui varient dans le temps (mêmes colonnes que frame)."""
+    mask = frame.notna()
+    num = (frame.fillna(0) * W).sum(axis=1)
+    den = (W * mask).sum(axis=1)
+    return num / den.replace(0, np.nan)
+
+
+# --------------------------------------------------------------------------- calage de l'échelle
+def calibrate(T_raw: pd.Series) -> tuple[pd.Series, pd.Series, pd.Series]:
+    """Étire le score brut selon son rang dans les 10 dernières années : score = 50 + 20 × Φ⁻¹(rang).
+
+    À chaque date, le score brut n'est comparé qu'aux 10 années précédentes (pas d'information
+    future), comme chaque indicateur. Φ⁻¹ convertit ce rang en « nombre d'écarts-types » d'une loi normale :
+    les zones correspondent alors à des fréquences fixes, symétriques vers le haut et vers le bas
+    (euphorie et stress ≈ 7 % des jours chacun, favorable et prudence ≈ 24 %, neutre ≈ 38 %).
+    Renvoie (score calé, moyenne historique du brut, écart-type historique du brut).
+    """
+    s = T_raw.dropna()
+    win = f"{cfg.CALIB_WINDOW_DAYS}D"
+    n = s.rolling(win, min_periods=cfg.CALIB_MIN_DAYS).count()
+    rank = s.rolling(win, min_periods=cfg.CALIB_MIN_DAYS).rank()
+    p = ((rank - 0.5) / n).clip(0.001, 0.999)       # percentile strictement entre 0 et 1
+    cal = pd.Series(50 + cfg.CALIB_POINTS_PER_SD * norm.ppf(p), index=s.index).clip(0, 100)
+    cal[p.isna()] = np.nan
+    mu = s.rolling(win, min_periods=cfg.CALIB_MIN_DAYS).mean()
+    sd = s.rolling(win, min_periods=cfg.CALIB_MIN_DAYS).std()
+    return cal.reindex(T_raw.index), mu.reindex(T_raw.index), sd.reindex(T_raw.index)
+
+
 # --------------------------------------------------------------------------- calcul par région
 def compute_region(R: dict, region: str, index: pd.DatetimeIndex, sources_used: dict, today: pd.Timestamp):
     indicators_out = []
@@ -89,6 +137,7 @@ def compute_region(R: dict, region: str, index: pd.DatetimeIndex, sources_used: 
     ind_weights = {}
     ind_pillar = {}
     composites = {}
+    mult, shock_d = {}, {}
 
     for ind in cfg.INDICATORS:
         comps = ind.get(region)
@@ -127,55 +176,91 @@ def compute_region(R: dict, region: str, index: pd.DatetimeIndex, sources_used: 
         ind_F[ind["id"]] = F_ind
         ind_weights[ind["id"]] = ind.get("weight", 1)
         ind_pillar[ind["id"]] = ind["pillar"]
+        mult[ind["id"]], shock_d[ind["id"]] = shock_multiplier(F_ind)
         # composite brut (mêmes unités) pour le régime et les règles de conseil
         rawf = pd.DataFrame({k: _daily(v) for k, v in comp_raw.items()})
         composites[ind["id"]] = weighted_mean(rawf, comp_w).dropna()
         srcs = sorted({sources_used.get(k, "") for k in _series_used(ind, region)} - {""})
+        T_ind = 100 - F_ind
         indicators_out.append({
             **_ind_meta(ind),
             "available": True,
-            "tension": r1(100 - F_ind.iloc[-1]),
-            "tension_7d": r1(100 - F_ind.iloc[-8]) if len(F_ind) > 8 else None,
+            "tension": r1(T_ind.iloc[-1]),
+            "tension_7d": r1(T_ind.iloc[-8]) if len(F_ind) > 8 else None,
+            "normal": r1(T_ind.dropna().mean()),
+            "value": r1(composites[ind["id"]].iloc[-1], 2) if len(composites[ind["id"]]) else None,
             "components": comp_out,
             "sources": [cfg.SOURCE_LABELS.get(s.split(":")[0], s) for s in srcs],
         })
 
-    # ---- piliers
+    # ---- piliers (poids des indicateurs variables dans le temps)
     pillar_F = {}
+    W_ind = {i: mult[i] * ind_weights[i] for i in ind_F}
     for p in cfg.PILLAR_ORDER:
         ids = [i for i, pp in ind_pillar.items() if pp == p]
         if ids:
-            pillar_F[p] = weighted_mean(pd.DataFrame({i: ind_F[i] for i in ids}), ind_weights)
+            pillar_F[p] = weighted_mean_tv(pd.DataFrame({i: ind_F[i] for i in ids}),
+                                           pd.DataFrame({i: W_ind[i] for i in ids}))
     pw = {p: cfg.PILLARS[p]["weight"] for p in pillar_F}
     PF = pd.DataFrame(pillar_F)
-    global_F = weighted_mean(PF, pw)
-    T = 100 - global_F
+    T_raw = 100 - weighted_mean(PF, pw)
+    T, mu, sd = calibrate(T_raw)
     T_pillars = 100 - PF
 
-    # ---- variantes de robustesse
-    eq_T = 100 - weighted_mean(PF, {p: 1 for p in PF.columns})
-    pca_T, pca_w = _pca_variant(ind_F)
+    # ---- variantes de robustesse (calées de la même façon)
+    eq_T = calibrate(100 - weighted_mean(PF, {p: 1 for p in PF.columns}))[0]
+    pca_raw, pca_w = _pca_variant(ind_F)
+    pca_T = calibrate(pca_raw)[0] if pca_raw is not None else None
 
-    # ---- contributions à la date du jour : c_i = W_p × v_i × (T_i − 50)
+    # ---- contributions à la date du jour, en points du score calé :
+    #      c_i = (20 / écart-type) × W_p × v_i × (T_i − normale_i)   où normale_i = moyenne passée de T_i
     last = index[-1]
+    k = cfg.CALIB_POINTS_PER_SD / sd.iloc[-1] if pd.notna(sd.iloc[-1]) and sd.iloc[-1] > 0 else 1.0
     wp_eff = effective_weights(PF.loc[last], pw)
-    contributions = []
+    contributions, boosts = [], []
     for p, Wp in wp_eff.items():
         ids = [i for i, pp in ind_pillar.items() if pp == p and pd.notna(ind_F[i].loc[last])]
-        vi = effective_weights(pd.Series({i: ind_F[i].loc[last] for i in ids}), ind_weights)
+        vi = effective_weights(pd.Series({i: ind_F[i].loc[last] for i in ids}),
+                               {i: float(W_ind[i].loc[last]) for i in ids})
         for i, v in vi.items():
             Ti = 100 - ind_F[i].loc[last]
+            hist_i = (100 - ind_F[i]).dropna()
+            normal = float(hist_i[hist_i.index > last - pd.Timedelta(days=cfg.CALIB_WINDOW_DAYS)].mean())
             contributions.append({
                 "id": i, "label": _label(i), "pillar": p,
                 "weight": r1(Wp * v * 100, 1),
-                "tension": r1(Ti),
-                "contribution": r1(Wp * v * (Ti - 50), 2),
+                "base_weight": r1(Wp * ind_weights[i] / sum(ind_weights[j] for j in ids) * 100, 1),
+                "tension": r1(Ti), "normal": r1(normal),
+                "contribution": k * Wp * v * (Ti - normal),
             })
+            m = float(mult[i].loc[last])
+            if m > 1.02:
+                d = shock_d[i]
+                recent = d[(d.index > last - pd.Timedelta(days=45)) & (d.abs() >= cfg.SHOCK_START)]
+                when = recent.abs().idxmax() if not recent.empty else last
+                boosts.append({"id": i, "label": _label(i), "pillar": p, "multiplier": r1(m, 2),
+                               "date": when.strftime("%Y-%m-%d"),
+                               "change": r1(-float(d.loc[when])) if pd.notna(d.loc[when]) else None})
+    score = float(T.iloc[-1]) if pd.notna(T.iloc[-1]) else float(T_raw.iloc[-1])
+    # Le calage n'est pas linéaire : on répartit l'écart réel du score à 50 au prorata des
+    # contributions linéaires, quand elles vont dans le même sens (cas normal).
+    tot = sum(c["contribution"] or 0 for c in contributions)
+    if tot * (score - 50) > 0 and abs(tot) >= 0.5:
+        f = (score - 50) / tot
+        for c in contributions:
+            c["contribution"] = r1((c["contribution"] or 0) * f, 2)
     contributions.sort(key=lambda c: -abs(c["contribution"] or 0))
+    pillar_points = {}
+    for c in contributions:
+        pillar_points[c["pillar"]] = pillar_points.get(c["pillar"], 0) + (c["contribution"] or 0)
+    adjust = score - 50 - sum(pillar_points.values())
 
     return {
-        "R": R, "T": T, "T_pillars": T_pillars, "eq_T": eq_T, "pca_T": pca_T, "pca_w": pca_w,
-        "indicators": indicators_out, "contributions": contributions,
+        "R": R, "T": T, "T_raw": T_raw, "calib": {"mean": r1(mu.iloc[-1]), "sd": r1(sd.iloc[-1], 2),
+                                                 "raw": r1(T_raw.iloc[-1]), "adjust": r1(adjust, 2)},
+        "T_pillars": T_pillars, "eq_T": eq_T, "pca_T": pca_T, "pca_w": pca_w,
+        "indicators": indicators_out, "contributions": contributions, "boosts": boosts,
+        "pillar_points": {p: r1(v, 2) for p, v in pillar_points.items()},
         "composites": composites, "ind_F": ind_F, "pillar_weights_eff": wp_eff,
     }
 
@@ -254,69 +339,34 @@ def regime(composites: dict) -> dict | None:
     }
 
 
-# --------------------------------------------------------------------------- conseils
-def advice_rules(res: dict) -> list:
-    comp = res["composites"]
-    tens = {i["id"]: i.get("tension") for i in res["indicators"] if i.get("available")}
-    rules = []
-
-    def last(k):
-        s = comp.get(k)
-        return None if s is None or s.empty else float(s.iloc[-1])
-
-    ta = last("taux_anticipe")
-    if ta is not None and ta < -0.25:
-        rules.append(("Baisse de taux anticipée", f"Le marché anticipe une baisse des taux directeurs ({ta:+.2f} pt).",
-                      "Obligations longues et valeurs de croissance favorisées."))
-    elif ta is not None and ta > 0.25:
-        rules.append(("Hausse de taux anticipée", f"Le marché anticipe une hausse des taux directeurs ({ta:+.2f} pt).",
-                      "Obligations courtes, banques et valeurs « value » favorisées."))
-    # la composante « brent » est en valeur absolue : le sens se lit sur la série brute
-    raw_b = res.get("R", {}).get("brent")
-    b = None
-    if raw_b is not None and len(raw_b.dropna()) > 63:
-        rb = raw_b.dropna()
-        b = float((rb.iloc[-1] / rb.iloc[-64] - 1) * 100)
-    if b is not None and b > 15:
-        rules.append(("Pétrole en forte hausse", f"Le Brent a pris {b:.0f} % en 3 mois.",
-                      "Énergie favorisée ; transport aérien et consommation pénalisés."))
-    elif b is not None and b < -15:
-        rules.append(("Pétrole en forte baisse", f"Le Brent a perdu {abs(b):.0f} % en 3 mois.",
-                      "Transport et consommation soutenus ; énergie pénalisée."))
-    pe = last("pente")
-    if pe is not None and pe < 0:
-        rules.append(("Courbe des taux inversée", f"Le 10 ans est sous le 2 ans ({pe:+.2f} pt) : signal historique de récession.",
-                      "Réduire les valeurs cycliques, privilégier la qualité."))
-    if (tens.get("geopolitique") or 0) > 70:
-        rules.append(("Risque géopolitique élevé", "L'incertitude géopolitique est au-dessus de sa norme.",
-                      "Renforcer l'or et le secteur de la défense."))
-    if (tens.get("valorisation") or 0) > 75:
-        rules.append(("Actions chères", "La valorisation des actions est élevée par rapport à son historique.",
-                      "Rester sélectif, privilégier les valeurs à dividende et la diversification."))
-    if (tens.get("volatilite") or 0) > 75:
-        rules.append(("Volatilité forte", "La volatilité implicite est nettement au-dessus de la normale.",
-                      "Réduire l'effet de levier et étaler les achats dans le temps."))
-    return [{"title": t, "why": w, "idea": i} for t, w, i in rules]
-
-
 # --------------------------------------------------------------------------- test historique indicatif
+BT = {  # actions [(série, poids)], taux 10 ans (obligations), taux court (liquidités)
+    "world": ([("spx", 0.6), ("sx5e", 0.4)], "us_10y", "fed_funds"),
+    "europe": ([("sx5e", 1.0)], "ea_10y", "ecb_dfr"),
+    "france": ([("cac", 1.0)], "oat_10y", "ecb_dfr"),
+    "us": ([("spx", 1.0)], "us_10y", "fed_funds"),
+    "cn": ([("shanghai", 1.0)], "us_10y", "cn_3m"),
+    "jp": ([("nikkei", 1.0)], "jp_10y", "boj"),
+}
+
+
 def backtest(T: pd.Series, R: dict, region: str) -> dict | None:
     """Allocation dynamique selon la zone (mois précédent) vs portefeuille fixe 60/40, rendements approximés."""
     try:
-        if region == "world":
-            eq = 0.6 * R["spx"].resample("ME").last().pct_change() + 0.4 * R["sx5e"].resample("ME").last().pct_change()
-            y = _daily(R["us_10y"]).resample("ME").last()
-            cash = _daily(R["fed_funds"]).resample("ME").last() / 1200
-        else:
-            eq = 0.5 * R["sx5e"].resample("ME").last().pct_change() + 0.5 * R["cac"].resample("ME").last().pct_change()
-            y = _daily(R["ea_10y"]).resample("ME").last()
-            cash = _daily(R["ecb_dfr"]).resample("ME").last() / 1200
+        eqs, yk, ck = BT[region]
+        eq = sum(w * R[k].resample("ME").last().pct_change() for k, w in eqs)
+        y = _daily(R[yk]).resample("ME").last()
+        cash = _daily(R[ck]).resample("ME").last() / 1200
         bond = y.shift(1) / 1200 - 8 * (y - y.shift(1)) / 100
         gold = R["gold"].resample("ME").last().pct_change()
+        # immobilier coté (REIT) ; à défaut, les actions de la zone
+        reit = R["reit"].resample("ME").last().pct_change() if "reit" in R else eq
     except KeyError:
         return None
     sig = T.resample("ME").last().shift(1)
-    df = pd.DataFrame({"eq": eq, "bond": bond, "gold": gold, "cash": cash, "sig": sig}).dropna()
+    df = pd.DataFrame({"eq": eq, "bond": bond, "gold": gold, "cash": cash, "reit": reit, "sig": sig})
+    df["reit"] = df["reit"].fillna(df["eq"])
+    df = df.dropna()
     df = df[df.index >= cfg.HISTORY_START]
     if len(df) < 24:
         return None
@@ -324,6 +374,7 @@ def backtest(T: pd.Series, R: dict, region: str) -> dict | None:
     for _, row in df.iterrows():
         a = cfg.ALLOCATION[cfg.zone_of(row["sig"])[0]]
         strat.append(a["Actions"] / 100 * row["eq"] + a["Obligations"] / 100 * row["bond"]
+                     + a["Immobilier"] / 100 * row["reit"]
                      + a["Or"] / 100 * row["gold"] + a["Liquidités"] / 100 * row["cash"])
         bench.append(0.6 * row["eq"] + 0.4 * row["bond"])
     s, b = pd.Series(strat, index=df.index), pd.Series(bench, index=df.index)
@@ -343,19 +394,6 @@ def backtest(T: pd.Series, R: dict, region: str) -> dict | None:
         "series": [[d.strftime("%Y-%m"), r1(si[d] * 100), r1(bi[d] * 100)] for d in df.index],
         "strategy": ss, "benchmark": bs,
     }
-
-
-# --------------------------------------------------------------------------- phrase du jour
-def signal_sentence(score: float, contributions: list) -> str:
-    zone, _ = cfg.zone_of(score)
-    up = [c["label"].split(" (")[0].lower() for c in contributions if (c["contribution"] or 0) > 0.3][:2]
-    down = [c["label"].split(" (")[0].lower() for c in contributions if (c["contribution"] or 0) < -0.3][:2]
-    parts = [f"{zone} ({score:.0f}/100)."]
-    if up:
-        parts.append("Tension alimentée surtout par : " + " et ".join(up) + ".")
-    if down:
-        parts.append("Soutiens principaux : " + " et ".join(down) + ".")
-    return " ".join(parts)
 
 
 def now_utc() -> str:

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ago, colorOf, dateFr, fmt, signed, useData, useRegion, zoneOf, ZONES } from "@/lib/data";
+import { ago, colorOf, dateFr, fmt, REGION_LABELS, REGIONS, signed, useData, useRegion, zoneOf, ZONES } from "@/lib/data";
 
 // ------------------------------------------------------------------ navigation
 const NAV = [
@@ -51,16 +51,16 @@ export function Header() {
           </svg>
           Baromètre 2026
         </Link>
-        <div className="order-3 flex w-full rounded-full border border-line p-0.5 text-sm sm:order-none sm:ml-6 sm:w-auto">
-          {(["world", "europe"] as const).map((r) => (
+        <div className="order-3 flex w-full gap-0.5 overflow-x-auto rounded-full border border-line p-0.5 text-sm lg:order-none lg:ml-6 lg:w-auto">
+          {REGIONS.map((r) => (
             <button
               key={r}
               onClick={() => setRegion(r)}
-              className={`flex-1 rounded-full px-4 py-1.5 transition sm:flex-none ${
+              className={`shrink-0 grow whitespace-nowrap rounded-full px-3 py-1.5 transition lg:grow-0 ${
                 region === r ? "bg-accent/15 font-semibold text-ink ring-1 ring-accent" : "muted hover:text-ink"
               }`}
             >
-              {r === "world" ? "Monde" : "Europe / France"}
+              {REGION_LABELS[r]}
             </button>
           ))}
         </div>

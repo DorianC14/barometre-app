@@ -24,8 +24,28 @@ export function useData<T = any>(file: string) {
   });
 }
 
-// ------------------------------------------------------------------ région (Monde / Europe-France)
-export type Region = "world" | "europe";
+// ------------------------------------------------------------------ zones suivies
+export const REGIONS = ["world", "europe", "france", "us", "cn", "jp"] as const;
+export type Region = (typeof REGIONS)[number];
+export const REGION_LABELS: Record<Region, string> = {
+  world: "Monde",
+  europe: "Europe",
+  france: "France",
+  us: "États-Unis",
+  cn: "Chine",
+  jp: "Japon",
+};
+export const REGION_FLAGS: Record<Region, string> = { world: "🌍", europe: "🇪🇺", france: "🇫🇷", us: "🇺🇸", cn: "🇨🇳", jp: "🇯🇵" };
+export const REGION_COLORS: Record<Region, string> = {
+  world: "#60a5fa",
+  europe: "#a78bfa",
+  france: "#f472b6",
+  us: "#34d399",
+  cn: "#f87171",
+  jp: "#fbbf24",
+};
+const isRegion = (r: unknown): r is Region => typeof r === "string" && (REGIONS as readonly string[]).includes(r);
+
 const RegionCtx = createContext<{ region: Region; setRegion: (r: Region) => void }>({
   region: "world",
   setRegion: () => {},
@@ -36,7 +56,7 @@ export function RegionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const r = localStorage.getItem("region");
-      if (r === "world" || r === "europe") setRegionState(r);
+      if (isRegion(r)) setRegionState(r);
     } catch {}
   }, []);
   const setRegion = (r: Region) => {
@@ -61,12 +81,24 @@ export const zoneOf = (s: number | null | undefined) =>
   s == null ? { name: "—", color: "#64748b", max: 0 } : ZONES.find((z) => s < z.max) || ZONES[4];
 export const colorOf = (s: number | null | undefined) => zoneOf(s).color;
 
+/** Événement visible pour une zone : sans zone précise, ou concernant la zone. */
+export const eventInRegion = (e: { zones?: string[] | null }, region: Region) => !e.zones || e.zones.includes(region);
+
 export const PILLAR_COLORS: Record<string, string> = {
   macro: "#a78bfa",
   bc: "#38bdf8",
   marches: "#34d399",
   risque: "#fb923c",
   flux: "#f472b6",
+};
+
+/** Couleurs des classes d'actifs de l'allocation. */
+export const ASSET_COLORS: Record<string, string> = {
+  Actions: "#2563eb",
+  Obligations: "#0891b2",
+  Immobilier: "#9333ea",
+  Or: "#ca8a04",
+  Liquidités: "#64748b",
 };
 
 // ------------------------------------------------------------------ formats

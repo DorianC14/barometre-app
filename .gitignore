@@ -6,3 +6,4 @@ node_modules/
 out/
 web/public/data/
 .env
+*.tsbuildinfo

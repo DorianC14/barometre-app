@@ -1,18 +1,21 @@
 # Baromètre 2026 · Santé financière mondiale
 
 Projet KEDGE BS, Gestion d'actifs 2025-2026. L'application calcule un **score de tension financière**
-de 0 (euphorie) à 100 (stress), pour le **Monde** et pour l'**Europe / France**. Le score agrège
-22 indicateurs répartis en 5 piliers et s'actualise automatiquement.
+de 0 (euphorie) à 100 (stress), pour six zones : **Monde, Europe (zone euro), France, États-Unis, Chine
+et Japon**. Le score agrège jusqu'à 22 indicateurs répartis en 5 piliers et s'actualise automatiquement.
 
 ## Ce que contient le dépôt
 
 ```
 pipeline/                 Collecte et calcul (Python)
-  sources.py              Connecteurs : FRED, BCE, Eurostat, INSEE, OCDE, STOXX, Twelve Data, Yahoo, multpl, GPR, EPU
+  sources.py              Connecteurs : FRED, BCE, BRI, Eurostat, INSEE, OCDE, STOXX, Twelve Data, Yahoo, multpl, GPR, EPU
   config.py               Méthodologie chiffrée : séries, 22 indicateurs, piliers, poids, zones, allocation
   transforms.py           Variation sur 1 an, écart à la moyenne 200 jours, credit impulse…
-  scoring.py              Normalisation (z-score 10 ans → 0-100), pondération, contributions,
-                          variantes (poids égaux, ACP), régime All Weather, conseils, test historique
+  scoring.py              Normalisation (z-score 10 ans → 0-100), poids variables, calage de l'échelle,
+                          contributions, variantes (poids égaux, ACP), régime All Weather, test historique
+  texts.py                Textes automatiques : signal du jour, explication des piliers, analyse des périodes
+  advice.py               Pistes d'investissement (seuils chiffrés, secteurs, exemples d'ETF)
+  events.py               Grands événements (liste historique + détection automatique)
   news.py, lexicon.py     Revue de presse (RSS) et sentiment par dictionnaire
   run.py                  Point d'entrée : --mode markets | full | news
   tests/                  Tests de la logique de calcul
@@ -26,7 +29,8 @@ docs/                     Note d'explication (2 pages, HTML et PDF)
 1. **GitHub Actions** lance `pipeline/run.py` automatiquement :
    - toutes les 15 minutes : cours de marché (indices, VIX, Brent, EUR/USD, or, taux 10 ans US) ;
    - chaque jour vers 5 h-6 h (Paris) : toutes les séries (macro, taux, crédit, géopolitique) ;
-   - vers 7 h et 18 h : revue de presse et sentiment.
+   - à 8 h 30, 9 h 30, 17 h et 21 h (Paris), week-end compris : revue de presse, sentiment et synthèse du jour
+     (les tâches partent ~20 min plus tôt car GitHub les lance souvent en retard).
 2. Les résultats (JSON) sont publiés sur la branche **`data`** du dépôt. Cette branche ne garde
    qu'un seul commit, pour rester légère.
 3. Le site sur **Vercel** lit ces fichiers et se recharge seul toutes les 2 minutes. Il n'a pas
@@ -56,7 +60,7 @@ Dans ce cas, il suffit de les réactiver dans l'onglet Actions.
 ```bash
 pip install -r pipeline/requirements.txt
 export TWELVEDATA_API_KEY=...   # facultatif
-cd pipeline && python run.py --mode full && python run.py --mode news   # écrit ../data/*.json
+cd pipeline && python run.py --mode full && python run.py --mode news --edition soir   # écrit ../data/*.json
 cd ../web && npm install && mkdir -p public/data && cp ../data/*.json public/data/ && npm run dev
 ```
 
@@ -69,10 +73,13 @@ Tests : `python -m pytest pipeline/tests`.
   notée selon son écart à la cible de 2 % : 100 − 25 × |π − 2|.
 - **Pondération** : banques centrales 25 %, risque 20 %, marchés 20 %, macro 20 %, flux et
   sentiment 15 %. Le taux anticipé compte double dans son pilier.
-- **Score** = 100 − note favorable pondérée. Zones : 0-20 euphorie, 20-40 favorable,
-  40-60 neutre, 60-80 prudence, 80-100 stress.
-- **Contribution d'un indicateur** = poids du pilier × poids dans le pilier × (note − 50).
-  Score = 50 + somme des contributions.
+- **Poids variables** : chaque zone a ses propres indicateurs ; un indicateur dont la note bouge de plus de
+  10 points en 5 jours pèse jusqu'à 50 % de plus, puis revient à la normale en 2 à 3 semaines.
+- **Score brut** = 100 − note favorable pondérée. **Calage** : le brut est classé parmi les 10 années
+  précédentes (percentile p), puis score = 50 + 20 × Φ⁻¹(p). Zones : 0-20 euphorie, 20-40 favorable,
+  40-60 neutre, 60-80 prudence, 80-100 stress (euphorie et stress ≈ 7 % des jours chacun).
+- **Contribution d'un indicateur** = écart de sa note à sa normale des 10 dernières années × son poids réel,
+  en points de score. Score = 50 + somme des contributions.
 
 *Les conseils affichés sont des suppositions issues d'un modèle pédagogique. Ils ne constituent
 pas un conseil en investissement personnalisé (directive MIF).*
