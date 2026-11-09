@@ -28,20 +28,22 @@ export default function News() {
     return (
       <div className="space-y-4">
         <PageTitle title="Revue de presse" />
-        <div className="card text-sm muted">La première revue de presse sera publiée à la prochaine édition (7 h ou 18 h, heure de Paris).</div>
+        <div className="card text-sm muted">La première revue de presse sera publiée à la prochaine édition (8 h 30, 9 h 30, 17 h ou 21 h, heure de Paris).</div>
       </div>
     );
   if (!news) return <Loading />;
-  const order = region === "world" ? ["international", "europe"] : ["europe", "international"];
+  const order = region === "europe" || region === "france" ? ["europe", "international"] : ["international", "europe"];
+  const syn = news.synthese;
 
   return (
     <div className="space-y-5">
       <PageTitle title="Revue de presse économique et financière">
-        Mise à jour deux fois par jour, vers 7 h et 18 h (heure de Paris). Les sujets sont classés selon le nombre de médias
+        Mise à jour quatre fois par jour, week-end compris (heure de Paris) : 8 h 30 juste avant l'ouverture de la Bourse de Paris,
+        9 h 30 après l'ouverture, 17 h pour les news de la journée et 21 h pour le bilan. Les sujets sont classés selon le nombre de médias
         qui en parlent. Le ton est mesuré par dictionnaire de mots (Loughran-McDonald en anglais, dictionnaire maison en français).
       </PageTitle>
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        <span className="rounded-full bg-accent/15 px-3 py-1 font-medium">Édition du {news.edition}</span>
+        <span className="rounded-full bg-accent/15 px-3 py-1 font-medium">Édition de {news.edition_label || news.edition}</span>
         <span className="muted">{dateFr(news.generated_at, true)}</span>
         <a href={news.aktionnaire} target="_blank" rel="noreferrer" className="ml-auto rounded-full border border-line px-3 py-1 text-xs hover:border-accent">
           Suivre Aktionnaire sur Instagram ↗
@@ -51,6 +53,23 @@ export default function News() {
         </a>
       </div>
 
+      {syn?.lines?.length > 0 && (
+        <section className="card border-accent/40">
+          <h2 className="text-base font-semibold">L'essentiel de la journée</h2>
+          <ul className="mt-2 space-y-1.5 text-sm">
+            {syn.lines.map((l: any, i: number) => (
+              <li key={i} className="flex gap-3">
+                <span className="num w-12 shrink-0 font-semibold text-accent">{l.time}</span>
+                <span>
+                  <a href={l.link} target="_blank" rel="noreferrer" className="font-medium hover:text-accent">{l.text}</a>
+                  <span className="ml-1 text-xs muted">· {l.media}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-sm muted">{syn.conclusion}</p>
+        </section>
+      )}
       <div className="grid gap-5 lg:grid-cols-2">
         {order.map((key) => {
           const s = news.sections[key];

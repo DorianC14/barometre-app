@@ -70,3 +70,12 @@ def impulse(ratio: pd.Series) -> pd.Series:
     r = ratio.dropna().sort_index()
     flow = r - r.shift(4)
     return (flow - flow.shift(4)).dropna()
+
+
+def realized_vol(s: pd.Series, n: int = 21) -> pd.Series:
+    """Volatilité réalisée sur `n` séances, annualisée en % : remplace la volatilité implicite
+    quand aucun indice de type VIX n'est disponible gratuitement (Chine, Japon)."""
+    import numpy as np
+    s = s.dropna().sort_index()
+    r = np.log(s / s.shift(1))
+    return (r.rolling(n, min_periods=int(n * 0.8)).std() * (252 ** 0.5) * 100).dropna()

@@ -2,15 +2,18 @@
 
 import { Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Disclaimer, Loading, PageTitle, ZoneBadge } from "@/components/ui";
-import { fmt, useData, useRegion, ZONES } from "@/lib/data";
+import { ASSET_COLORS, fmt, useData, useRegion, ZONES } from "@/lib/data";
 
-const ASSET_COLORS = ["#2563eb", "#0891b2", "#ca8a04", "#64748b"];
+const ASSETS = ["Actions", "Obligations", "Immobilier", "Or", "Liquidités"];
 const ALLOC: Record<string, Record<string, number>> = {
-  Euphorie: { Actions: 50, Obligations: 25, Or: 10, Liquidités: 15 },
-  Favorable: { Actions: 60, Obligations: 25, Or: 5, Liquidités: 10 },
-  Neutre: { Actions: 45, Obligations: 35, Or: 10, Liquidités: 10 },
-  Prudence: { Actions: 30, Obligations: 40, Or: 15, Liquidités: 15 },
-  Stress: { Actions: 15, Obligations: 45, Or: 20, Liquidités: 20 },
+  Euphorie: { Actions: 45, Obligations: 25, Immobilier: 5, Or: 10, Liquidités: 15 },
+  Favorable: { Actions: 55, Obligations: 20, Immobilier: 10, Or: 5, Liquidités: 10 },
+  Neutre: { Actions: 40, Obligations: 30, Immobilier: 10, Or: 10, Liquidités: 10 },
+  Prudence: { Actions: 28, Obligations: 37, Immobilier: 5, Or: 15, Liquidités: 15 },
+  Stress: { Actions: 15, Obligations: 42, Immobilier: 3, Or: 20, Liquidités: 20 },
+};
+const CAT_COLORS: Record<string, string> = {
+  Obligations: "#0891b2", Actions: "#2563eb", Secteurs: "#0d9488", Protection: "#ca8a04", Immobilier: "#9333ea", Allocation: "#64748b", Marchés: "#64748b",
 };
 const QUADS = [
   { g: true, i: false, name: "Expansion désinflationniste", assets: "Actions, obligations d'entreprises" },
@@ -45,7 +48,7 @@ export default function Conseils() {
             <ResponsiveContainer>
               <PieChart>
                 <Pie data={alloc} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="85%" paddingAngle={2}>
-                  {alloc.map((a, i) => <Cell key={a.name} fill={ASSET_COLORS[i]} />)}
+                  {alloc.map((a) => <Cell key={a.name} fill={ASSET_COLORS[a.name]} />)}
                 </Pie>
                 <Tooltip formatter={(v: number) => `${v} %`} />
                 <Legend formatter={(n, e: any) => `${n} ${e.payload.value} %`} wrapperStyle={{ fontSize: 12 }} />
@@ -55,9 +58,9 @@ export default function Conseils() {
         </div>
         <div className="card overflow-x-auto lg:col-span-3">
           <h2 className="card-title mb-3">Grille d'allocation par zone</h2>
-          <table className="w-full min-w-[420px] text-sm">
+          <table className="w-full min-w-[480px] text-sm">
             <thead className="text-left text-xs muted">
-              <tr><th className="pb-2 font-medium">Score de tension</th><th className="pb-2 font-medium">Actions</th><th className="pb-2 font-medium">Obligations</th><th className="pb-2 font-medium">Or</th><th className="pb-2 font-medium">Liquidités</th></tr>
+              <tr><th className="pb-2 font-medium">Score de tension</th>{ASSETS.map((a) => <th key={a} className="pb-2 font-medium">{a}</th>)}</tr>
             </thead>
             <tbody>
               {ZONES.map((z, i) => {
@@ -66,30 +69,63 @@ export default function Conseils() {
                 return (
                   <tr key={z.name} className={`border-t border-line ${cur ? "bg-accent/10 font-semibold" : ""}`}>
                     <td className="py-2"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full" style={{ background: z.color }} />{i * 20} à {Math.min(100, z.max)} · {z.name}{cur && " ← aujourd'hui"}</td>
-                    <td className="num">{a.Actions} %</td><td className="num">{a.Obligations} %</td><td className="num">{a.Or} %</td><td className="num">{a["Liquidités"]} %</td>
+                    {ASSETS.map((k) => <td key={k} className="num">{a[k]} %</td>)}
                   </tr>
                 );
               })}
             </tbody>
           </table>
           <p className="mt-3 text-xs muted">En euphorie, la part actions baisse légèrement : approche contrariante, car les excès précèdent souvent les corrections.</p>
+          <p className="mt-2 text-xs muted">
+            <b className="text-ink">Immobilier</b> : immobilier coté (foncières, SIIC, REIT), achetable et revendable chaque jour en Bourse.
+            Il est très sensible aux taux : sa part baisse quand la tension monte. Les SCPI (immobilier non coté) restent une piste
+            de long terme (8 ans et plus), mais leur prix n'étant publié qu'une fois par an, elles ne sont pas modélisées ici.
+          </p>
         </div>
       </div>
 
       <div className="card">
-        <h2 className="card-title mb-3">Pistes du jour, déduites des indicateurs</h2>
+        <h2 className="card-title">Pistes du jour, déduites des indicateurs</h2>
+        <p className="mb-3 mt-1 text-xs muted">
+          Chaque piste part d'un constat chiffré avec son seuil de déclenchement. Les supports sont des exemples d'ETF cotés en
+          euros (code ISIN pour les retrouver chez votre courtier), pas une recommandation : lisez leur document d'information (DIC) avant
+          d'investir et vérifiez s'ils sont éligibles au PEA.
+        </p>
         {R.advice.rules.length ? (
           <div className="grid gap-3 md:grid-cols-2">
             {R.advice.rules.map((r: any) => (
-              <div key={r.title} className="rounded-lg border border-line p-3">
-                <div className="font-medium">{r.title}</div>
-                <p className="mt-1 text-sm muted">{r.why}</p>
-                <p className="mt-2 text-sm"><span className="text-accent">Piste :</span> {r.idea}</p>
+              <div key={r.title} className="flex flex-col rounded-lg border border-line p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="font-medium">{r.title}</div>
+                  {r.category && (
+                    <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: `${CAT_COLORS[r.category] || "#64748b"}22`, color: CAT_COLORS[r.category] || "#64748b" }}>{r.category}</span>
+                  )}
+                </div>
+                <p className="mt-1 text-sm muted"><span className="font-medium text-ink">Constat : </span>{r.why}</p>
+                <p className="mt-2 text-sm"><span className="font-medium text-accent">Piste : </span>{r.idea}</p>
+                {r.supports?.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <div className="text-[11px] font-medium uppercase tracking-wide muted">Exemples de supports</div>
+                    {r.supports.map((x: any) => (
+                      <div key={x.isin} className="flex flex-wrap items-baseline gap-x-2 rounded bg-surface px-2 py-1 text-xs">
+                        <span className="font-medium">{x.name}</span>
+                        <span className="num muted">{x.isin}</span>
+                        <span className="muted">· {x.kind}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {(r.horizon || r.risk) && (
+                  <div className="mt-auto flex flex-wrap gap-x-4 pt-2 text-[11px] muted">
+                    {r.horizon && <span>Horizon : {r.horizon}</span>}
+                    {r.risk && <span>Risque : {r.risk}</span>}
+                  </div>
+                )}
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm muted">Aucun signal particulier aujourd'hui : les règles (taux anticipés, pétrole, courbe des taux, géopolitique, valorisation, volatilité) restent dans leur zone normale.</p>
+          <p className="text-sm muted">Aucun signal particulier aujourd'hui : les règles (taux anticipés, pétrole, courbe des taux, géopolitique, valorisation, volatilité, inflation, crédit, immobilier, or) restent dans leur zone normale.</p>
         )}
       </div>
 

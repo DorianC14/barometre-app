@@ -110,6 +110,39 @@ def oecd_cli(country: str) -> pd.Series:
     return _clean(df.set_index("TIME_PERIOD")["OBS_VALUE"])
 
 
+def _oecd_csv(url: str, start: str) -> pd.Series:
+    r = _get(url, {"startPeriod": start, "format": "csvfile"})
+    df = pd.read_csv(io.StringIO(r.text))
+    t = df["TIME_PERIOD"].astype(str)
+    # trimestres « 2026-Q3 » -> premier mois du trimestre
+    t = t.str.replace(r"-Q(\d)", lambda m: f"-{(int(m.group(1)) - 1) * 3 + 1:02d}", regex=True)
+    return _clean(pd.Series(df["OBS_VALUE"].values, index=pd.to_datetime(t)))
+
+
+def bis(key: str, start: str = "1995-01") -> pd.Series:
+    """Banque des règlements internationaux (API SDMX, sans clé). key = 'FLUX/VERSION/SERIE'.
+    Ex. « WS_LONG_CPI/1.0/M.JP.771 » (inflation sur 1 an), « WS_CBPOL/1.0/D.JP » (taux directeur)."""
+    r = _get(f"https://stats.bis.org/api/v2/data/dataflow/BIS/{key}", {"startPeriod": start, "format": "csv"})
+    df = pd.read_csv(io.StringIO(r.text))
+    t = df["TIME_PERIOD"].astype(str)
+    return _clean(pd.Series(df["OBS_VALUE"].values, index=pd.to_datetime(t)))
+
+
+def oecd_cpi(country: str) -> pd.Series:
+    """Inflation sur 1 an (%, indice des prix à la consommation), base de prix de l'OCDE.
+    Couvre aussi la Chine, absente des séries FRED à jour."""
+    return _oecd_csv(
+        f"https://sdmx.oecd.org/public/rest/data/OECD.SDD.TPS,DSD_PRICES@DF_PRICES_ALL,1.0/{country}.M.N.CPI.PA._T.N.GY",
+        "1995-01")
+
+
+def oecd_gdp(country: str) -> pd.Series:
+    """Croissance du PIB en volume sur 1 an (%), comptes trimestriels de l'OCDE."""
+    return _oecd_csv(
+        f"https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NAMAIN1@DF_QNA,/Q.Y.{country}.S1.S1.B1GQ._Z._Z._Z.PC.L.GY.T0102",
+        "1995-Q1")
+
+
 # --------------------------------------------------------------------------- Yahoo
 def _yahoo_params(rng: str, interval: str) -> dict:
     # range=max renvoie des points mensuels : on passe des bornes explicites pour du quotidien.
@@ -248,6 +281,22 @@ def gpr_daily() -> pd.Series:
     val_col = "GPRD" if "GPRD" in df.columns else df.columns[1]
     s = df.set_index(pd.to_datetime(df[date_col]))[val_col]
     return _clean(s)
+
+
+def gpr_country(code: str) -> pd.Series:
+    """Risque géopolitique propre à un pays (Caldara et Iacoviello, mensuel). code = « CHN », « JPN »…"""
+    r = _get("https://www.matteoiacoviello.com/gpr_files/data_gpr_export.xls")
+    df = pd.read_excel(io.BytesIO(r.content))
+    return _clean(pd.Series(df[f"GPRC_{code}"].values, index=pd.to_datetime(df["month"])))
+
+
+def epu_japan() -> pd.Series:
+    """Incertitude politique au Japon (Baker, Bloom, Davis, Arbatli et al.), mensuel."""
+    r = _get("https://www.policyuncertainty.com/media/Japan_Policy_Uncertainty_Data.xlsx", timeout=30)
+    df = pd.read_excel(io.BytesIO(r.content))
+    df = df[pd.to_numeric(df["Year"], errors="coerce").notna() & pd.to_numeric(df["Month"], errors="coerce").notna()]
+    idx = pd.to_datetime(dict(year=df["Year"].astype(int), month=df["Month"].astype(int), day=1))
+    return _clean(pd.Series(df.iloc[:, 2].values, index=idx))
 
 
 def epu_europe(country: str) -> pd.Series:

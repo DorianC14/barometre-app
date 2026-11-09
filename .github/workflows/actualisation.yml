@@ -1,12 +1,16 @@
 name: Actualisation des données
 
 # Heures en UTC (Paris = UTC+1 en hiver, UTC+2 en été).
+# Revue de presse : 4 éditions par jour, week-end compris (8 h 30, 9 h 30, 17 h, 21 h, heure de Paris).
+# GitHub lance souvent les tâches programmées avec 5 à 15 minutes de retard : elles partent donc
+# 20 minutes avant l'heure prévue, et en double (heure d'hiver / heure d'été). Le script choisit
+# l'édition la plus proche de l'heure de Paris et ignore un lancement si l'édition est déjà publiée.
 on:
   schedule:
-    - cron: "*/15 * * * *"  # marchés : toutes les 15 minutes, 24 h sur 24
-    - cron: "7 4 * * *"     # collecte complète (macro, taux, crédit…) : chaque jour vers 5 h-6 h
-    - cron: "2 5 * * *"     # revue de presse du matin : vers 6 h-7 h
-    - cron: "2 16 * * *"    # revue de presse du soir : vers 17 h-18 h
+    - cron: "*/15 * * * *"         # marchés : toutes les 15 minutes, 24 h sur 24
+    - cron: "7 4 * * *"            # collecte complète (macro, taux, crédit…) : chaque jour vers 5 h-6 h
+    - cron: "10 6,7,8 * * *"       # revue de presse de 8 h 30 et de 9 h 30
+    - cron: "40 14,15,18,19 * * *" # revue de presse de 17 h et de 21 h
   workflow_dispatch:
     inputs:
       mode:
@@ -54,7 +58,7 @@ jobs:
         run: |
           case "${{ github.event.schedule }}" in
             "7 4 * * *") m=full ;;
-            "2 5 * * *"|"2 16 * * *") m=news ;;
+            "10 6,7,8 * * *"|"40 14,15,18,19 * * *") m=news ;;
             "") m="${{ inputs.mode || 'full' }}" ;;
             *) m=markets ;;
           esac

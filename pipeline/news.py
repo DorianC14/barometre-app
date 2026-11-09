@@ -1,4 +1,4 @@
-"""Revue de presse biquotidienne et sentiment des news par dictionnaire (sans IA)."""
+"""Revue de presse (4 éditions par jour) et sentiment des news par dictionnaire (sans IA)."""
 from __future__ import annotations
 
 import html
@@ -233,10 +233,11 @@ def dominant_theme(items: list) -> str | None:
     return best if counts[best] > 0 else None
 
 
-def daily_review(edition: str) -> dict:
+def daily_review(edition: str, edition_label: str = "") -> dict:
     """Construit la revue de presse et les scores de sentiment du jour."""
     raw = collect()
-    review = {"edition": edition, "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    review = {"edition": edition, "edition_label": edition_label,
+              "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
               "aktionnaire": AKTIONNAIRE, "sections": {}}
     for section, items in raw.items():
         avg = sum(i["sentiment"] for i in items) / len(items) if items else 0.0
@@ -248,3 +249,79 @@ def daily_review(edition: str) -> dict:
             "avis": avis, "topics": cluster(items),
         }
     return review
+
+
+# --------------------------------------------------------------------------- synthèse du jour
+# Titres génériques de pages (pas de vraies nouvelles) écartés de la synthèse
+JUNK = re.compile(r"(en direct|analyse technique|transcript|graphique|cours de bourse|conseils boursiers|"
+                  r"earnings call|newsletter|podcast|replay|live:|live updates)", re.I)
+SHORT_TIME = {"preouverture": "8 h 30", "ouverture": "9 h 30", "journee": "17 h", "soir": "21 h"}
+LEAD = {"preouverture": "Avant l'ouverture", "ouverture": "Après l'ouverture", "journee": "Dans la journée",
+        "soir": "En soirée"}
+
+
+def headline_candidates(review: dict) -> list[dict]:
+    """Sujets de l'édition, du plus repris au moins repris, toutes rubriques confondues."""
+    out = []
+    for key, sec in review["sections"].items():
+        for t in sec.get("topics", []):
+            if JUNK.search(t["title"]) or len(t["title"]) < 25:
+                continue
+            out.append({"title": t["title"], "sources": t["sources"], "n": len(t["sources"]),
+                        "count": t["count"], "tone": t["tone"], "link": t["link"], "section": key})
+    out.sort(key=lambda x: (x["n"], x["count"]), reverse=True)
+    return out
+
+
+def update_day(day: dict, review: dict, edition: str, paris_date: str) -> dict:
+    """Ajoute l'édition à la journée en cours et réécrit la synthèse (teaser de 5 à 6 lignes)."""
+    if day.get("date") != paris_date:
+        day = {"date": paris_date, "editions": []}
+    day["editions"] = [e for e in day["editions"] if e["id"] != edition]
+    day["editions"].append({"id": edition, "generated_at": review["generated_at"],
+                            "candidates": headline_candidates(review)[:8],
+                            "sentiment": {k: v["sentiment"] for k, v in review["sections"].items()},
+                            "themes": [v.get("theme") for v in review["sections"].values() if v.get("theme")]})
+    order = [e["id"] for e in EDITION_ORDER]
+    day["editions"].sort(key=lambda e: order.index(e["id"]) if e["id"] in order else 9)
+    used: list[set] = []
+    picked: list[tuple[int, dict, dict]] = []   # (rang de l'édition, édition, sujet)
+
+    def new_topic(e):
+        for c in e["candidates"]:
+            w = _content_words(c["title"])
+            if all(len(w & u) < 2 for u in used):
+                used.append(w)
+                return c
+        return None
+
+    eds = day["editions"]
+    for k, e in enumerate(eds):              # 1er passage : le sujet phare de chaque édition
+        c = new_topic(e)
+        if c:
+            picked.append((k, e, c))
+    for k, e in reversed(list(enumerate(eds))):   # 2e passage : compléter jusqu'à 5 lignes
+        if len(picked) >= 5:
+            break
+        c = new_topic(e)
+        if c:
+            picked.append((k, e, c))
+    picked.sort(key=lambda x: x[0])
+    lines = []
+    for _, e, c in picked[:5]:
+        media = f"{c['n']} médias" if c["n"] > 1 else c["sources"][0]
+        lines.append({"time": SHORT_TIME.get(e["id"], ""), "lead": LEAD.get(e["id"], ""),
+                      "text": c["title"], "media": media, "link": c["link"], "tone": c["tone"]})
+    sents = [v for e in day["editions"] for v in e["sentiment"].values()]
+    avg = sum(sents) / len(sents) if sents else 0.0
+    themes = [t for e in day["editions"] for t in e["themes"]]
+    theme = max(set(themes), key=themes.count) if themes else None
+    day["synthese"] = {
+        "lines": lines,
+        "conclusion": f"Ton général de la journée : {tone(avg)}" + (f", dominé par {theme}." if theme else "."),
+        "editions": len(day["editions"]),
+    }
+    return day
+
+
+EDITION_ORDER: list[dict] = []   # rempli par run.py à partir de config.EDITIONS
