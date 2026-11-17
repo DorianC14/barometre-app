@@ -1,0 +1,54 @@
+name: Marchés en continu
+
+# GitHub ne respecte pas les tâches programmées toutes les 15 minutes : sur un dépôt gratuit,
+# elles partent en pratique toutes les 40 à 90 minutes. Ce « relais » contourne le problème :
+# une seule tâche reste allumée environ 5 h 40 et actualise les marchés elle-même à chaque
+# quart d'heure pile (h00, h15, h30, h45). Pendant ce temps, les lancements programmés ci-dessous
+# attendent leur tour ; dès que le relais s'arrête, le suivant démarre aussitôt.
+# (GitHub annule les lancements en attente en double : les runs « annulés » sont donc normaux.)
+on:
+  schedule:
+    - cron: "*/20 * * * *"   # sert seulement à garder un relais prêt à prendre la suite
+  workflow_dispatch:
+
+concurrency:
+  group: marches-relais
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  relais:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355     # limite GitHub : 6 h par tâche
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+
+      - name: Installer les dépendances
+        run: pip install -r pipeline/requirements.txt
+
+      - name: Actualiser les marchés toutes les 15 minutes (pendant ~5 h 40)
+        env:
+          # Clé gratuite Twelve Data (Settings → Secrets and variables → Actions)
+          TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+        run: |
+          git config --global user.name "barometre-bot"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          fin=$(( $(date +%s) + 340 * 60 ))
+          while :; do
+            debut=$(date +%s)
+            echo "::group::Actualisation $(date -u +%H:%M) UTC"
+            .github/scripts/maj.sh markets || echo "::warning::Actualisation $(date -u +%H:%M) UTC en échec, nouvel essai au prochain quart d'heure"
+            echo "::endgroup::"
+            prochain=$(( (debut / 900 + 1) * 900 ))   # prochain quart d'heure pile
+            [ "$prochain" -ge "$fin" ] && break
+            attente=$(( prochain - $(date +%s) ))
+            [ "$attente" -gt 0 ] && sleep "$attente"
+          done
