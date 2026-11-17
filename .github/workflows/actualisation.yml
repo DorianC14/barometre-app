@@ -1,5 +1,6 @@
 name: Actualisation des données
 
+# Les cours de marché (toutes les 15 minutes) sont gérés par marches.yml.
 # Heures en UTC (Paris = UTC+1 en hiver, UTC+2 en été).
 # Revue de presse : 4 éditions par jour, week-end compris (8 h 30, 9 h 30, 17 h, 21 h, heure de Paris).
 # GitHub lance souvent les tâches programmées avec 5 à 15 minutes de retard : elles partent donc
@@ -7,7 +8,6 @@ name: Actualisation des données
 # l'édition la plus proche de l'heure de Paris et ignore un lancement si l'édition est déjà publiée.
 on:
   schedule:
-    - cron: "*/15 * * * *"         # marchés : toutes les 15 minutes, 24 h sur 24
     - cron: "7 4 * * *"            # collecte complète (macro, taux, crédit…) : chaque jour vers 5 h-6 h
     - cron: "10 6,7,8 * * *"       # revue de presse de 8 h 30 et de 9 h 30
     - cron: "40 14,15,18,19 * * *" # revue de presse de 17 h et de 21 h
@@ -42,49 +42,25 @@ jobs:
       - name: Installer les dépendances
         run: pip install -r pipeline/requirements.txt
 
-      - name: Récupérer la branche « data » (données publiées)
-        run: |
-          git config --global user.name "barometre-bot"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git ls-remote --exit-code --heads origin data >/dev/null; then
-            git fetch --depth=1 origin data
-            git worktree add -B data data origin/data
-          else
-            git worktree add --orphan -b data data
-          fi
-
       - name: Choisir le type de mise à jour
         id: mode
         run: |
           case "${{ github.event.schedule }}" in
-            "7 4 * * *") m=full ;;
             "10 6,7,8 * * *"|"40 14,15,18,19 * * *") m=news ;;
             "") m="${{ inputs.mode || 'full' }}" ;;
-            *) m=markets ;;
+            *) m=full ;;
           esac
           echo "mode=$m" >> "$GITHUB_OUTPUT"
           echo "Mode : $m"
 
-      - name: Collecter et recalculer les scores
-        working-directory: pipeline
+      - name: Collecter, recalculer et publier
         env:
-          DATA_DIR: ${{ github.workspace }}/data
           # Clé gratuite Twelve Data (Settings → Secrets and variables → Actions)
           TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
-        run: python run.py --mode ${{ steps.mode.outputs.mode }}
-
-      - name: Publier les nouvelles données
-        working-directory: data
         run: |
-          git add -A
-          if git diff --cached --quiet; then echo "Rien de neuf"; exit 0; fi
-          # Un seul commit gardé sur la branche data, pour qu'elle reste légère
-          if git rev-parse --verify -q HEAD >/dev/null; then
-            git commit --amend -q -m "Données ${{ steps.mode.outputs.mode }} $(date -u +%FT%TZ)"
-          else
-            git commit -q -m "Données ${{ steps.mode.outputs.mode }} $(date -u +%FT%TZ)"
-          fi
-          for i in 1 2 3; do git push -f origin data && break || sleep $((i*5)); done
+          git config --global user.name "barometre-bot"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          .github/scripts/maj.sh ${{ steps.mode.outputs.mode }}
 
   tests:
     if: github.event_name == 'workflow_dispatch'

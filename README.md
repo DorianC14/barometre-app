@@ -27,7 +27,9 @@ docs/                     Note d'explication (2 pages, HTML et PDF)
 ## Comment l'actualisation fonctionne
 
 1. **GitHub Actions** lance `pipeline/run.py` automatiquement :
-   - toutes les 15 minutes : cours de marché (indices, VIX, Brent, EUR/USD, or, taux 10 ans US) ;
+   - toutes les 15 minutes, à heure fixe : cours de marché (indices, VIX, Brent, EUR/USD, or, taux 10 ans US).
+     GitHub ne lance pas les tâches programmées aussi souvent : `marches.yml` garde donc une tâche « relais »
+     allumée ~5 h 40 qui actualise elle-même à chaque quart d'heure, puis passe la main à la suivante ;
    - chaque jour vers 5 h-6 h (Paris) : toutes les séries (macro, taux, crédit, géopolitique) ;
    - à 8 h 30, 9 h 30, 17 h et 21 h (Paris), week-end compris : revue de presse, sentiment et synthèse du jour
      (les tâches partent ~20 min plus tôt car GitHub les lance souvent en retard).
