@@ -2,6 +2,8 @@
 
 # Barolys · Santé financière mondiale
 
+**Site en ligne : [barolys.vercel.app](https://barolys.vercel.app)** (données actualisées toutes les 15 minutes)
+
 Projet KEDGE BS, Gestion d'actifs 2025-2026. L'application calcule un **score de tension financière**
 de 0 (euphorie) à 100 (stress), pour six zones : **Monde, Europe (zone euro), France, États-Unis, Chine
 et Japon**. Le score agrège jusqu'à 22 indicateurs répartis en 5 piliers et s'actualise automatiquement.
