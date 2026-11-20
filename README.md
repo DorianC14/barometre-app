@@ -1,4 +1,6 @@
-# Baromètre 2026 · Santé financière mondiale
+<img src="web/public/logo.svg" alt="Barolys" height="48">
+
+# Barolys · Santé financière mondiale
 
 Projet KEDGE BS, Gestion d'actifs 2025-2026. L'application calcule un **score de tension financière**
 de 0 (euphorie) à 100 (stress), pour six zones : **Monde, Europe (zone euro), France, États-Unis, Chine

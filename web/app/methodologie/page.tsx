@@ -85,7 +85,7 @@ export default function Methodologie() {
   return (
     <div className="space-y-5">
       <PageTitle title="Méthodologie">
-        Comment le baromètre est construit, de la collecte des données au score final. La même méthode est appliquée aux six
+        Comment Barolys est construit, de la collecte des données au score final. La même méthode est appliquée aux six
         zones : Monde, Europe (zone euro), France, États-Unis, Chine et Japon, chacune avec ses propres données (sa banque
         centrale, ses taux, sa Bourse, sa devise).
       </PageTitle>

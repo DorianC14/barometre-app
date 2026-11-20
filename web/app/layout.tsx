@@ -4,7 +4,7 @@ import { Header } from "@/components/ui";
 import { RegionProvider } from "@/lib/data";
 
 export const metadata: Metadata = {
-  title: "Baromètre 2026 · Santé financière mondiale",
+  title: "Barolys · Santé financière mondiale",
   description:
     "Score de tension financière de 0 (euphorie) à 100 (stress) pour le Monde, l'Europe, la France, les États-Unis, la Chine et le Japon, calculé à partir de 22 indicateurs actualisés automatiquement.",
 };
@@ -28,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Header />
           <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
           <footer className="mx-auto max-w-7xl px-4 pb-10 pt-4 text-xs muted">
-            Projet pédagogique KEDGE BS, Gestion d'actifs 2025-2026. Sources : FRED, BCE, BRI, Eurostat, INSEE, OCDE, STOXX,
+            Barolys · Projet pédagogique KEDGE BS, Gestion d'actifs 2025-2026. Sources : FRED, BCE, BRI, Eurostat, INSEE, OCDE, STOXX,
             Twelve Data, Yahoo Finance, multpl, Caldara et Iacoviello, Baker-Bloom-Davis (EPU), presse financière. Ne constitue pas un conseil en investissement.
           </footer>
         </RegionProvider>
