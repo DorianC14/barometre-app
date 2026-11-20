@@ -150,7 +150,7 @@ export default function Methodologie() {
           </div>
         </div>
         <p className="mt-3 text-xs muted">
-          Robustesse : variante à poids égaux {fmt(R.variants.equal)} · variante pondérée par ACP {fmt(R.variants.pca)} · score officiel {fmt(R.score)}
+          Robustesse : variante à poids égaux {fmt(R.variants.equal)} · variante pondérée par ACP {fmt(R.variants.pca)} · score officiel {fmt(R.score)}{" "}
           (score brut avant calage : {fmt(R.variants.raw)}). Si les trois restent proches, le signal ne dépend pas d'un choix arbitraire de poids.
           Le simulateur applique le même calage, sur des points hebdomadaires.
         </p>
