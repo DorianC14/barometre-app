@@ -16,6 +16,21 @@ const NAV = [
   { href: "/methodologie/", label: "Méthodologie" },
 ];
 
+// Logo Barolys : jauge à trois zones (vert = euphorie, orange, rouge = stress) et son aiguille
+export function LogoMark({ size = 26 }: { size?: number }) {
+  return (
+    <svg width={size} height={Math.round((size * 2) / 3)} viewBox="4 9 24 16" aria-hidden>
+      <g fill="none" strokeWidth="3.4" strokeLinecap="round">
+        <path d="M6.5 22a9.5 9.5 0 0 1 3.4-7.3" stroke="#22c55e" />
+        <path d="M13.2 12.9a9.5 9.5 0 0 1 5.6 0" stroke="#f59e0b" />
+        <path d="M22.1 14.7a9.5 9.5 0 0 1 3.4 7.3" stroke="#ef4444" />
+      </g>
+      <path d="M16 22l5-7.5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+      <circle cx="16" cy="22" r="2.4" fill="#3b82f6" />
+    </svg>
+  );
+}
+
 export function Header() {
   const path = usePathname();
   const { region, setRegion } = useRegion();
@@ -45,11 +60,10 @@ export function Header() {
     <header className="sticky top-0 z-30 border-b border-line bg-surface/85 backdrop-blur">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3">
         <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden>
-            <path d="M3 18a9 9 0 0 1 18 0" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-            <path d="M12 18l4.5-6" stroke="#3b82f6" strokeWidth="2.2" strokeLinecap="round" />
-          </svg>
-          Baromètre 2026
+          <LogoMark />
+          <span className="text-lg font-bold tracking-tight">
+            Baro<span className="text-accent">lys</span>
+          </span>
         </Link>
         <div className="order-3 flex w-full gap-0.5 overflow-x-auto rounded-full border border-line p-0.5 text-sm lg:order-none lg:ml-6 lg:w-auto">
           {REGIONS.map((r) => (

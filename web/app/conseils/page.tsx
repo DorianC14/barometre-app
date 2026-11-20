@@ -172,8 +172,8 @@ export default function Conseils() {
                     <CartesianGrid stroke="rgb(var(--line))" strokeOpacity={0.4} vertical={false} />
                     <XAxis dataKey="m" tickFormatter={(m) => m.slice(0, 4)} minTickGap={40} tick={{ fontSize: 10, fill: "rgb(var(--ink-soft))" }} stroke="rgb(var(--line))" />
                     <YAxis tick={{ fontSize: 10, fill: "rgb(var(--ink-soft))" }} stroke="rgb(var(--line))" domain={["auto", "auto"]} />
-                    <Tooltip formatter={(v: number, n: string) => [fmt(v), n === "strat" ? "Allocation du baromètre" : "60/40 fixe"]} />
-                    <Legend formatter={(n) => (n === "strat" ? "Allocation du baromètre" : "60/40 fixe")} wrapperStyle={{ fontSize: 11 }} />
+                    <Tooltip formatter={(v: number, n: string) => [fmt(v), n === "strat" ? "Allocation Barolys" : "60/40 fixe"]} />
+                    <Legend formatter={(n) => (n === "strat" ? "Allocation Barolys" : "60/40 fixe")} wrapperStyle={{ fontSize: 11 }} />
                     <Line dataKey="strat" stroke="rgb(var(--accent))" dot={false} strokeWidth={2} />
                     <Line dataKey="bench" stroke="#94a3b8" dot={false} strokeWidth={1.5} />
                   </LineChart>
@@ -182,7 +182,7 @@ export default function Conseils() {
               <table className="mt-2 w-full text-xs">
                 <thead className="muted"><tr><th className="text-left font-medium" /><th className="font-medium">Rendement annuel</th><th className="font-medium">Volatilité</th><th className="font-medium">Pire baisse</th></tr></thead>
                 <tbody className="num text-center">
-                  <tr><td className="text-left">Baromètre</td><td>{fmt(bt.strategy.annual_return)} %</td><td>{fmt(bt.strategy.volatility)} %</td><td>{fmt(bt.strategy.max_drawdown)} %</td></tr>
+                  <tr><td className="text-left">Barolys</td><td>{fmt(bt.strategy.annual_return)} %</td><td>{fmt(bt.strategy.volatility)} %</td><td>{fmt(bt.strategy.max_drawdown)} %</td></tr>
                   <tr><td className="text-left">60/40</td><td>{fmt(bt.benchmark.annual_return)} %</td><td>{fmt(bt.benchmark.volatility)} %</td><td>{fmt(bt.benchmark.max_drawdown)} %</td></tr>
                 </tbody>
               </table>
